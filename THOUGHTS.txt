@@ -1,0 +1,40 @@
+Thoughts on a heap API for the standard Library
+
+The hard part is providing access to elements so that their value can be changed or they can be deleted. Heap elements have no distinguishing key. The container/heap package can handle this because the user is in complete control of the underlying storage: they can track items as they move around in the heap. If we want to keep the storage private, we need something that correlates with elements. One idea is for insertion to return that correlate, here called Item. 
+
+type Heap[T cmp.Ordered]
+type HeapFunc[T any]  // constructor passed a func(T, T) int
+
+Heap methods:
+
+Insert(T) Item			Inserts an element into the Heap and returns something that can be used to change its value or delete it.
+
+Min() T				Returns an element with smallest value in the Heap. 
+
+ExtractMin() T 		Returns an element with smallest value in the heap, and deletes it.
+				(This is the name that Cormen-Leiserson-Rivest uses. I think it’s very clear.)
+
+Build()				Rebuilds the heap (heapifies). O(n). Call after changing many values, or after the initial insertions (see 
+below).
+
+Clear()				Removes all elements from the Heap.
+
+Len() int			Returns the number of elements in the Heap.
+
+All() iter.Seq[T]		Returns an iterator over the elements, in largely unspecified order. The only guarantee is that the first 
+element is the min.
+
+Item methods:
+
+Delete()			Removes the item from the heap.
+				(This name is better than Remove, because we have a delete built-in.)
+
+Fix()				Puts item in the right place in the heap. Call after changing its value.
+
+An Item would hold a pointer to the integer index of the element in the heap slice, so I think that would involve a second allocation in addition to inserting the element in the slice. But perhaps there is a cleverer way.
+
+There is no way to insert multiple elements at once in this design. The obvious way to do so would require returning a slice of items, which would be another allocation. That leaves no obvious place to perform the O(n)  heapify operation. (If every insert actually added the element to the heap, preserving invariants, then inserting n elements would take O(nlogn) time). container/heap doesn't have this problem, because the user provides a slice that already contains the initial elements of the heap, and then calls Init to heapify.
+
+In this design, the initial inserts (before the first call to Min or ExtractMin) merely append to a slice. The first call to Min or ExtractMin builds the heap. To avoid that unexpected expense, the user can call Build after the insertions.
+
+In addition to that confusing delayed heapification, the main flaw in this design is the  extra work required for each insert to construct an Item, which is wasted if the user never wants to delete or modify element values. If we think that work is too costly, we could provide a separate insert method that didn't return an Item. Another alternative would have the user provide the correlate when inserting. 
