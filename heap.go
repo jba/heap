@@ -63,18 +63,18 @@ func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 
 // Insert adds an element to the heap.
 //
-// Before the first call to Min or ExtractMin, Insert simply appends to an
-// internal slice without maintaining the heap invariant. Call Build explicitly
-// if you want to ensure the heap is built after a batch of insertions.
+// Before the first call to other methods such as Min or ExtractMin, Insert simply
+// appends to an internal slice without maintaining the heap invariant. Call Build
+// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *Heap[T]) Insert(value T) {
 	h.impl.insertNoItem(value)
 }
 
 // Insert adds an element to the heap.
 //
-// Before the first call to Min or ExtractMin, Insert simply appends to an
-// internal slice without maintaining the heap invariant. Call Build explicitly
-// if you want to ensure the heap is built after a batch of insertions.
+// Before the first call to other methods such as Min or ExtractMin, Insert simply
+// appends to an internal slice without maintaining the heap invariant. Call Build
+// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *HeapFunc[T]) Insert(value T) {
 	h.impl.insertNoItem(value)
 }
@@ -82,24 +82,24 @@ func (h *HeapFunc[T]) Insert(value T) {
 // InsertItem adds an element to the heap and returns an Item that can be used
 // to delete or adjust the element later.
 //
-// Before the first call to Min or ExtractMin, InsertItem simply appends to an
-// internal slice without maintaining the heap invariant. Call Build explicitly
-// if you want to ensure the heap is built after a batch of insertions.
+// Before the first call to other methods such as Min or ExtractMin, InsertItem simply
+// appends to an internal slice without maintaining the heap invariant. Call Build
+// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *Heap[T]) InsertItem(value T) Item {
-	return h.impl.insert(value, h.impl)
+	return h.impl.insert(value)
 }
 
 // InsertItem adds an element to the heap and returns an Item that can be used
 // to delete or adjust the element later.
 //
-// Before the first call to Min or ExtractMin, InsertItem simply appends to an
-// internal slice without maintaining the heap invariant. Call Build explicitly
-// if you want to ensure the heap is built after a batch of insertions.
+// Before the first call to other methods such as Min or ExtractMin, InsertItem simply
+// appends to an internal slice without maintaining the heap invariant. Call Build
+// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *HeapFunc[T]) InsertItem(value T) Item {
-	return h.impl.insert(value, h.impl)
+	return h.impl.insert(value)
 }
 
-func (h *heapImpl[T]) insert(value T, heap heapInterface) Item {
+func (h *heapImpl[T]) insert(value T) Item {
 	idx := new(int)
 	*idx = len(h.data)
 
@@ -117,7 +117,7 @@ func (h *heapImpl[T]) insert(value T, heap heapInterface) Item {
 
 	return Item{
 		index: idx,
-		heap:  heap,
+		heap:  h,
 	}
 }
 
