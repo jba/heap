@@ -24,8 +24,8 @@ type Item struct {
 
 // heapInterface allows Item to call back into either Heap or HeapFunc.
 type heapInterface interface {
-	deleteItem(indexPtr *int)
-	adjustItem(indexPtr *int)
+	deleteItem(index *int)
+	adjustItem(index *int)
 }
 
 // entry stores a value and its index pointer.
@@ -44,7 +44,6 @@ type heapImpl[T any] struct {
 // New creates a new min-heap for ordered types.
 func New[T cmp.Ordered]() *Heap[T] {
 	impl := &heapImpl[T]{
-		data:    make([]entry[T], 0),
 		compare: cmp.Compare[T],
 	}
 	return &Heap[T]{impl: impl}
@@ -55,7 +54,6 @@ func New[T cmp.Ordered]() *Heap[T] {
 // zero if a == b, and a positive value if a > b.
 func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 	impl := &heapImpl[T]{
-		data:    make([]entry[T], 0),
 		compare: compare,
 	}
 	return &HeapFunc[T]{impl: impl}
@@ -295,24 +293,24 @@ func (item Item) Adjust() {
 	item.heap.adjustItem(item.index)
 }
 
-func (h *heapImpl[T]) deleteItem(indexPtr *int) {
+func (h *heapImpl[T]) deleteItem(index *int) {
 	if !h.built {
 		h.build()
 	}
 	// After building, read the updated index
-	i := *indexPtr
+	i := *index
 	if i < 0 || i >= len(h.data) {
 		return
 	}
 	h.deleteAt(i)
 }
 
-func (h *heapImpl[T]) adjustItem(indexPtr *int) {
+func (h *heapImpl[T]) adjustItem(index *int) {
 	if !h.built {
 		h.build()
 	}
 	// After building, read the updated index
-	i := *indexPtr
+	i := *index
 	if i < 0 || i >= len(h.data) {
 		return
 	}
