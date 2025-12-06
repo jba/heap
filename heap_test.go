@@ -150,34 +150,34 @@ func TestItemDelete(t *testing.T) {
 }
 
 func TestItemAdjust(t *testing.T) {
-	h := New[int]()
+	// Use a heap of *int so we can modify values through pointers
+	h := NewFunc(func(a, b *int) int { return *a - *b })
 
-	// Insert some elements
+	// Create values we can modify
+	vals := []*int{new(int), new(int), new(int), new(int), new(int)}
+	*vals[0] = 5
+	*vals[1] = 3
+	*vals[2] = 7
+	*vals[3] = 1
+	*vals[4] = 9
+
+	// Insert elements
 	items := make([]Item, 5)
-	items[0] = h.InsertItem(5)
-	items[1] = h.InsertItem(3)
-	items[2] = h.InsertItem(7)
-	items[3] = h.InsertItem(1)
-	items[4] = h.InsertItem(9)
+	for i, v := range vals {
+		items[i] = h.InsertItem(v)
+	}
 
 	// Build the heap to establish invariant
 	h.Build()
 
-	// Modify the value at items[3] (currently 1) by accessing the internal data
-	// In a real scenario, the user would modify their own data structure
-	// For this test, we need to access the internal representation
-	// Let's change the value and then call Adjust.
-
-	// Since we can't directly modify through the Item, we'll test that
-	// Adjust maintains the heap invariant by modifying internal state.
-	idx := *items[3].index
-	h.impl.data[idx].value = 8
+	// Modify vals[3] (currently 1) to 8
+	*vals[3] = 8
 	items[3].Adjust()
 
 	// Extract all elements - should still be in sorted order
 	var extracted []int
 	for h.Len() > 0 {
-		extracted = append(extracted, h.ExtractMin())
+		extracted = append(extracted, *h.ExtractMin())
 	}
 
 	expected := []int{3, 5, 7, 8, 9}
