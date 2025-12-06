@@ -31,7 +31,7 @@ Delete()			Removes the item from the heap.
 
 Fix()				Puts item in the right place in the heap. Call after changing its value.
 
-An Item would hold a pointer to the integer index of the element in the heap slice, so I think that would involve a second allocation in addition to inserting the element in the slice. But perhaps there is a cleverer way.
+An Item is a value type (not a pointer) that holds a pointer to the integer index of the element in the heap slice. This way, callers can store Items without worrying about nil checks or pointer semantics, but the underlying pointer allows multiple copies of the same Item to refer to the same heap element. This does involve a second allocation (for the index pointer) in addition to inserting the element in the slice.
 
 There is no way to insert multiple elements at once in this design. The obvious way to do so would require returning a slice of items, which would be another allocation. That leaves no obvious place to perform the O(n)  heapify operation. (If every insert actually added the element to the heap, preserving invariants, then inserting n elements would take O(nlogn) time). container/heap doesn't have this problem, because the user provides a slice that already contains the initial elements of the heap, and then calls Init to heapify.
 

@@ -67,7 +67,7 @@ func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 // Before the first call to Min or ExtractMin, Insert simply appends to an
 // internal slice without maintaining the heap invariant. Call Build explicitly
 // if you want to ensure the heap is built after a batch of insertions.
-func (h *Heap[T]) Insert(value T) *Item {
+func (h *Heap[T]) Insert(value T) Item {
 	return h.impl.insert(value, h.impl)
 }
 
@@ -77,11 +77,11 @@ func (h *Heap[T]) Insert(value T) *Item {
 // Before the first call to Min or ExtractMin, Insert simply appends to an
 // internal slice without maintaining the heap invariant. Call Build explicitly
 // if you want to ensure the heap is built after a batch of insertions.
-func (h *HeapFunc[T]) Insert(value T) *Item {
+func (h *HeapFunc[T]) Insert(value T) Item {
 	return h.impl.insert(value, h.impl)
 }
 
-func (h *heapImpl[T]) insert(value T, heap heapInterface) *Item {
+func (h *heapImpl[T]) insert(value T, heap heapInterface) Item {
 	idx := new(int)
 	*idx = len(h.data)
 
@@ -97,7 +97,7 @@ func (h *heapImpl[T]) insert(value T, heap heapInterface) *Item {
 		h.up(len(h.data) - 1)
 	}
 
-	return &Item{
+	return Item{
 		index: idx,
 		heap:  heap,
 	}
@@ -154,7 +154,7 @@ func (h *heapImpl[T]) extractMin() T {
 	}
 
 	min := h.data[0].value
-	h.removeAt(0)
+	h.deleteAt(0)
 	return min
 }
 
@@ -244,7 +244,7 @@ func (h *heapImpl[T]) all() iter.Seq[T] {
 // Delete removes this item from the heap.
 // If the item has already been deleted or the heap has been cleared,
 // Delete does nothing.
-func (item *Item) Delete() {
+func (item Item) Delete() {
 	if item.index == nil || *item.index < 0 {
 		return // already deleted
 	}
@@ -254,7 +254,7 @@ func (item *Item) Delete() {
 // Fix restores the heap invariant after the item's value has been changed.
 // Call this method after modifying the value of the element that this Item represents.
 // If the item has been deleted or the heap has been cleared, Fix does nothing.
-func (item *Item) Fix() {
+func (item Item) Fix() {
 	if item.index == nil || *item.index < 0 {
 		return // deleted item
 	}
@@ -270,7 +270,7 @@ func (h *heapImpl[T]) deleteItem(indexPtr *int) {
 	if i < 0 || i >= len(h.data) {
 		return
 	}
-	h.removeAt(i)
+	h.deleteAt(i)
 }
 
 func (h *heapImpl[T]) fixItem(indexPtr *int) {
@@ -288,8 +288,8 @@ func (h *heapImpl[T]) fixItem(indexPtr *int) {
 	}
 }
 
-// removeAt removes the element at index i and restores the heap invariant.
-func (h *heapImpl[T]) removeAt(i int) {
+// deleteAt removes the element at index i and restores the heap invariant.
+func (h *heapImpl[T]) deleteAt(i int) {
 	// Mark as deleted
 	*h.data[i].index = -1
 

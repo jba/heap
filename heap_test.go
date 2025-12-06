@@ -153,7 +153,7 @@ func TestItemFix(t *testing.T) {
 	h := New[int]()
 
 	// Insert some elements
-	items := make([]*Item, 5)
+	items := make([]Item, 5)
 	items[0] = h.Insert(5)
 	items[1] = h.Insert(3)
 	items[2] = h.Insert(7)
@@ -189,7 +189,7 @@ func TestItemFix(t *testing.T) {
 func TestClear(t *testing.T) {
 	h := New[int]()
 
-	items := make([]*Item, 3)
+	items := make([]Item, 3)
 	items[0] = h.Insert(5)
 	items[1] = h.Insert(3)
 	items[2] = h.Insert(7)
