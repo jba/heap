@@ -69,8 +69,8 @@ func ExampleHeapFunc() {
 func ExampleItem_Delete() {
 	h := heap.New[int]()
 
-	item1 := h.Insert(5)
-	item2 := h.Insert(3)
+	item1 := h.InsertItem(5)
+	item2 := h.InsertItem(3)
 	h.Insert(7)
 	h.Insert(1)
 
@@ -88,7 +88,7 @@ func ExampleItem_Delete() {
 	// 7
 }
 
-func ExampleItem_Fix() {
+func ExampleItem_Adjust() {
 	// In a real use case, you'd wrap your mutable data structure
 	type mutableInt struct {
 		value int
@@ -102,7 +102,7 @@ func ExampleItem_Fix() {
 	val2 := &mutableInt{3}
 	val3 := &mutableInt{7}
 
-	item1 := hm.Insert(val1)
+	item1 := hm.InsertItem(val1)
 	hm.Insert(val2)
 	hm.Insert(val3)
 
@@ -112,8 +112,8 @@ func ExampleItem_Fix() {
 	// Modify val1's value (currently 5, make it smaller)
 	val1.value = 1
 
-	// Call Fix to restore heap invariant
-	item1.Fix()
+	// Call Adjust to restore heap invariant
+	item1.Adjust()
 
 	// Now val1 should be the new minimum
 	fmt.Println(hm.Min().value)

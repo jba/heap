@@ -16,7 +16,7 @@ type HeapFunc[T any] struct {
 	impl *heapImpl[T]
 }
 
-// Item represents an element in the heap and can be used to delete or fix it.
+// Item represents an element in the heap and can be used to delete or modify it.
 type Item struct {
 	index *int
 	heap  heapInterface
@@ -25,7 +25,7 @@ type Item struct {
 // heapInterface allows Item to call back into either Heap or HeapFunc.
 type heapInterface interface {
 	deleteItem(indexPtr *int)
-	fixItem(indexPtr *int)
+	adjustItem(indexPtr *int)
 }
 
 // entry stores a value and its index pointer.
@@ -61,23 +61,41 @@ func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 	return &HeapFunc[T]{impl: impl}
 }
 
-// Insert adds an element to the heap and returns an Item that can be used
-// to delete or fix the element later.
+// Insert adds an element to the heap.
 //
 // Before the first call to Min or ExtractMin, Insert simply appends to an
 // internal slice without maintaining the heap invariant. Call Build explicitly
 // if you want to ensure the heap is built after a batch of insertions.
-func (h *Heap[T]) Insert(value T) Item {
+func (h *Heap[T]) Insert(value T) {
+	h.impl.insertNoItem(value)
+}
+
+// Insert adds an element to the heap.
+//
+// Before the first call to Min or ExtractMin, Insert simply appends to an
+// internal slice without maintaining the heap invariant. Call Build explicitly
+// if you want to ensure the heap is built after a batch of insertions.
+func (h *HeapFunc[T]) Insert(value T) {
+	h.impl.insertNoItem(value)
+}
+
+// InsertItem adds an element to the heap and returns an Item that can be used
+// to delete or adjust the element later.
+//
+// Before the first call to Min or ExtractMin, InsertItem simply appends to an
+// internal slice without maintaining the heap invariant. Call Build explicitly
+// if you want to ensure the heap is built after a batch of insertions.
+func (h *Heap[T]) InsertItem(value T) Item {
 	return h.impl.insert(value, h.impl)
 }
 
-// Insert adds an element to the heap and returns an Item that can be used
-// to delete or fix the element later.
+// InsertItem adds an element to the heap and returns an Item that can be used
+// to delete or adjust the element later.
 //
-// Before the first call to Min or ExtractMin, Insert simply appends to an
+// Before the first call to Min or ExtractMin, InsertItem simply appends to an
 // internal slice without maintaining the heap invariant. Call Build explicitly
 // if you want to ensure the heap is built after a batch of insertions.
-func (h *HeapFunc[T]) Insert(value T) Item {
+func (h *HeapFunc[T]) InsertItem(value T) Item {
 	return h.impl.insert(value, h.impl)
 }
 
@@ -100,6 +118,20 @@ func (h *heapImpl[T]) insert(value T, heap heapInterface) Item {
 	return Item{
 		index: idx,
 		heap:  heap,
+	}
+}
+
+func (h *heapImpl[T]) insertNoItem(value T) {
+	e := entry[T]{
+		value: value,
+		index: nil,
+	}
+
+	h.data = append(h.data, e)
+
+	// If heap has already been built, maintain heap invariant
+	if h.built {
+		h.up(len(h.data) - 1)
 	}
 }
 
@@ -194,7 +226,9 @@ func (h *HeapFunc[T]) Clear() {
 func (h *heapImpl[T]) clear() {
 	// Invalidate all outstanding Items
 	for i := range h.data {
-		*h.data[i].index = -1
+		if h.data[i].index != nil {
+			*h.data[i].index = -1
+		}
 	}
 	h.data = h.data[:0]
 	h.built = false
@@ -251,14 +285,14 @@ func (item Item) Delete() {
 	item.heap.deleteItem(item.index)
 }
 
-// Fix restores the heap invariant after the item's value has been changed.
+// Adjust restores the heap invariant after the item's value has been changed.
 // Call this method after modifying the value of the element that this Item represents.
-// If the item has been deleted or the heap has been cleared, Fix does nothing.
-func (item Item) Fix() {
+// If the item has been deleted or the heap has been cleared, Adjust does nothing.
+func (item Item) Adjust() {
 	if item.index == nil || *item.index < 0 {
 		return // deleted item
 	}
-	item.heap.fixItem(item.index)
+	item.heap.adjustItem(item.index)
 }
 
 func (h *heapImpl[T]) deleteItem(indexPtr *int) {
@@ -273,7 +307,7 @@ func (h *heapImpl[T]) deleteItem(indexPtr *int) {
 	h.deleteAt(i)
 }
 
-func (h *heapImpl[T]) fixItem(indexPtr *int) {
+func (h *heapImpl[T]) adjustItem(indexPtr *int) {
 	if !h.built {
 		h.build()
 	}
@@ -291,7 +325,9 @@ func (h *heapImpl[T]) fixItem(indexPtr *int) {
 // deleteAt removes the element at index i and restores the heap invariant.
 func (h *heapImpl[T]) deleteAt(i int) {
 	// Mark as deleted
-	*h.data[i].index = -1
+	if h.data[i].index != nil {
+		*h.data[i].index = -1
+	}
 
 	n := len(h.data) - 1
 	if n != i {
@@ -349,6 +385,10 @@ func (h *heapImpl[T]) down(i int) bool {
 // swap exchanges the elements at indices i and j and updates their index pointers.
 func (h *heapImpl[T]) swap(i, j int) {
 	h.data[i], h.data[j] = h.data[j], h.data[i]
-	*h.data[i].index = i
-	*h.data[j].index = j
+	if h.data[i].index != nil {
+		*h.data[i].index = i
+	}
+	if h.data[j].index != nil {
+		*h.data[j].index = j
+	}
 }

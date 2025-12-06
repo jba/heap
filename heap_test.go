@@ -114,10 +114,10 @@ func TestHeapFunc(t *testing.T) {
 func TestItemDelete(t *testing.T) {
 	h := New[int]()
 
-	item1 := h.Insert(5)
-	item2 := h.Insert(3)
-	item3 := h.Insert(7)
-	item4 := h.Insert(1)
+	item1 := h.InsertItem(5)
+	item2 := h.InsertItem(3)
+	item3 := h.InsertItem(7)
+	item4 := h.InsertItem(1)
 
 	if h.Len() != 4 {
 		t.Fatalf("heap should have 4 elements, got %d", h.Len())
@@ -149,16 +149,16 @@ func TestItemDelete(t *testing.T) {
 	item4.Delete()
 }
 
-func TestItemFix(t *testing.T) {
+func TestItemAdjust(t *testing.T) {
 	h := New[int]()
 
 	// Insert some elements
 	items := make([]Item, 5)
-	items[0] = h.Insert(5)
-	items[1] = h.Insert(3)
-	items[2] = h.Insert(7)
-	items[3] = h.Insert(1)
-	items[4] = h.Insert(9)
+	items[0] = h.InsertItem(5)
+	items[1] = h.InsertItem(3)
+	items[2] = h.InsertItem(7)
+	items[3] = h.InsertItem(1)
+	items[4] = h.InsertItem(9)
 
 	// Build the heap to establish invariant
 	h.Build()
@@ -166,13 +166,13 @@ func TestItemFix(t *testing.T) {
 	// Modify the value at items[3] (currently 1) by accessing the internal data
 	// In a real scenario, the user would modify their own data structure
 	// For this test, we need to access the internal representation
-	// Let's change the value and then call Fix
+	// Let's change the value and then call Adjust.
 
 	// Since we can't directly modify through the Item, we'll test that
-	// Fix maintains the heap invariant by modifying internal state
+	// Adjust maintains the heap invariant by modifying internal state.
 	idx := *items[3].index
 	h.impl.data[idx].value = 8
-	items[3].Fix()
+	items[3].Adjust()
 
 	// Extract all elements - should still be in sorted order
 	var extracted []int
@@ -182,7 +182,7 @@ func TestItemFix(t *testing.T) {
 
 	expected := []int{3, 5, 7, 8, 9}
 	if !slices.Equal(extracted, expected) {
-		t.Errorf("after Fix, extracted = %v, want %v", extracted, expected)
+		t.Errorf("after Adjust, extracted = %v, want %v", extracted, expected)
 	}
 }
 
@@ -190,9 +190,9 @@ func TestClear(t *testing.T) {
 	h := New[int]()
 
 	items := make([]Item, 3)
-	items[0] = h.Insert(5)
-	items[1] = h.Insert(3)
-	items[2] = h.Insert(7)
+	items[0] = h.InsertItem(5)
+	items[1] = h.InsertItem(3)
+	items[2] = h.InsertItem(7)
 
 	h.Clear()
 
@@ -202,7 +202,7 @@ func TestClear(t *testing.T) {
 
 	// Operations on items from cleared heap should be safe
 	items[0].Delete()
-	items[1].Fix()
+	items[1].Adjust()
 }
 
 func TestAll(t *testing.T) {
