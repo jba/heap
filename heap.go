@@ -31,8 +31,8 @@ type mover interface {
 	down(i int) bool
 }
 
-// Item represents an element in the heap and can be used to delete or modify it.
-type Item struct {
+// Handle represents an element in the heap and can be used to delete or modify it.
+type Handle struct {
 	index *int
 	iface itemInterface
 }
@@ -40,7 +40,7 @@ type Item struct {
 // itemInterface allows Item to call back into the heap implementation.
 type itemInterface interface {
 	deleteItem(index *int)
-	adjustItem(index *int)
+	changedItem(index *int)
 }
 
 // entry stores a value and its index pointer.
@@ -90,27 +90,27 @@ func (h *heapImpl[T]) insert(e entry[T]) {
 	}
 }
 
-// InsertItem adds an element to the heap and returns an Item that can be used
+// InsertHandle adds an element to the heap and returns an Item that can be used
 // to delete or adjust the element later.
 //
-// Before the first call to other methods such as Min or ExtractMin, InsertItem simply
+// Before the first call to other methods such as Min or ExtractMin, InsertHandle simply
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
-func (h *Heap[T]) InsertItem(value T) Item {
-	return h.impl.insertItem(entry[T]{value: value})
+func (h *Heap[T]) InsertHandle(value T) Handle {
+	return h.impl.insertHandle(entry[T]{value: value})
 }
 
-// InsertItem adds an element to the heap and returns an Item that can be used
+// InsertHandle adds an element to the heap and returns an Item that can be used
 // to delete or adjust the element later.
 //
-// Before the first call to other methods such as Min or ExtractMin, InsertItem simply
+// Before the first call to other methods such as Min or ExtractMin, InsertHandle simply
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
-func (h *HeapFunc[T]) InsertItem(value T) Item {
-	return h.impl.insertItem(entry[T]{value: value})
+func (h *HeapFunc[T]) InsertHandle(value T) Handle {
+	return h.impl.insertHandle(entry[T]{value: value})
 }
 
-func (h *heapImpl[T]) insertItem(e entry[T]) Item {
+func (h *heapImpl[T]) insertHandle(e entry[T]) Handle {
 	idx := new(int)
 	*idx = len(h.data)
 	e.index = idx
@@ -118,7 +118,7 @@ func (h *heapImpl[T]) insertItem(e entry[T]) Item {
 	if h.built {
 		h.mover.up(len(h.data) - 1)
 	}
-	return Item{index: idx, iface: h}
+	return Handle{index: idx, iface: h}
 }
 
 // Min returns the minimum element in the heap without removing it.
@@ -145,23 +145,23 @@ func (h *heapImpl[T]) min() T {
 	return h.data[0].value
 }
 
-// ExtractMin removes and returns the minimum element from the heap.
+// TakeMin removes and returns the minimum element from the heap.
 // Panics if the heap is empty.
 //
-// The first call to ExtractMin builds the heap if it hasn't been built yet.
-func (h *Heap[T]) ExtractMin() T {
-	return h.impl.extractMin()
+// The first call to TakeMin builds the heap if it hasn't been built yet.
+func (h *Heap[T]) TakeMin() T {
+	return h.impl.takeMin()
 }
 
-// ExtractMin removes and returns the minimum element from the heap.
+// TakeMin removes and returns the minimum element from the heap.
 // Panics if the heap is empty.
 //
-// The first call to ExtractMin builds the heap if it hasn't been built yet.
-func (h *HeapFunc[T]) ExtractMin() T {
-	return h.impl.extractMin()
+// The first call to TakeMin builds the heap if it hasn't been built yet.
+func (h *HeapFunc[T]) TakeMin() T {
+	return h.impl.takeMin()
 }
 
-func (h *heapImpl[T]) extractMin() T {
+func (h *heapImpl[T]) takeMin() T {
 	h.ensureBuilt()
 	if len(h.data) == 0 {
 		panic("heap: ExtractMin called on empty heap")
@@ -229,31 +229,44 @@ func (h *HeapFunc[T]) Len() int {
 	return len(h.impl.data)
 }
 
-// All returns an iterator over all elements in the heap.
-// The first element yielded is guaranteed to be the minimum.
-// The order of other elements is unspecified.
-//
-// If the heap hasn't been built yet, All builds it before iterating.
+// All returns an iterator over all elements in the heap
+// in unspecified order.
 func (h *Heap[T]) All() iter.Seq[T] {
 	return h.impl.all()
 }
 
-// All returns an iterator over all elements in the heap.
-// The first element yielded is guaranteed to be the minimum.
-// The order of other elements is unspecified.
-//
-// If the heap hasn't been built yet, All builds it before iterating.
+// All returns an iterator over all elements in the heap
+// in unspecified order.
 func (h *HeapFunc[T]) All() iter.Seq[T] {
 	return h.impl.all()
 }
 
 func (h *heapImpl[T]) all() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		if !h.built && len(h.data) > 0 {
-			h.build()
-		}
 		for _, e := range h.data {
 			if !yield(e.value) {
+				return
+			}
+		}
+	}
+}
+
+// Drain removes and returns the heap elements in sorted order,
+// from smallest to largest.
+func (h *Heap[T]) Drain() iter.Seq[T] {
+	return h.impl.drain()
+}
+
+// Drain removes and returns the heap elements in sorted order,
+// from smallest to largest.
+func (h *HeapFunc[T]) Drain() iter.Seq[T] {
+	return h.impl.drain()
+}
+
+func (h *heapImpl[T]) drain() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for len(h.data) > 0 {
+			if !yield(h.takeMin()) {
 				return
 			}
 		}
@@ -263,21 +276,21 @@ func (h *heapImpl[T]) all() iter.Seq[T] {
 // Delete removes this item from the heap.
 // If the item has already been deleted or the heap has been cleared,
 // Delete does nothing.
-func (item Item) Delete() {
+func (item Handle) Delete() {
 	if item.index == nil || *item.index < 0 {
 		return // already deleted
 	}
 	item.iface.deleteItem(item.index)
 }
 
-// Adjust restores the heap invariant after the item's value has been changed.
+// Changed restores the heap invariant after the item's value has been changed.
 // Call this method after modifying the value of the element that this Item represents.
-// If the item has been deleted or the heap has been cleared, Adjust does nothing.
-func (item Item) Adjust() {
+// If the item has been deleted or the heap has been cleared, Changed does nothing.
+func (item Handle) Changed() {
 	if item.index == nil || *item.index < 0 {
 		return // deleted item
 	}
-	item.iface.adjustItem(item.index)
+	item.iface.changedItem(item.index)
 }
 
 func (h *heapImpl[T]) deleteItem(index *int) {
@@ -289,7 +302,7 @@ func (h *heapImpl[T]) deleteItem(index *int) {
 	h.deleteAt(i)
 }
 
-func (h *heapImpl[T]) adjustItem(index *int) {
+func (h *heapImpl[T]) changedItem(index *int) {
 	h.ensureBuilt()
 	i := *index
 	if i < 0 || i >= len(h.data) {

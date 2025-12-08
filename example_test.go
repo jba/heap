@@ -16,10 +16,10 @@ func ExampleHeap() {
 	h.Insert(1)
 
 	// Extract elements in sorted order
-	fmt.Println(h.ExtractMin())
-	fmt.Println(h.ExtractMin())
-	fmt.Println(h.ExtractMin())
-	fmt.Println(h.ExtractMin())
+	fmt.Println(h.TakeMin())
+	fmt.Println(h.TakeMin())
+	fmt.Println(h.TakeMin())
+	fmt.Println(h.TakeMin())
 
 	// Output:
 	// 1
@@ -58,19 +58,19 @@ func ExampleHeapFunc() {
 	h.Insert(1)
 
 	// Extract maximum values
-	fmt.Println(h.ExtractMin()) // "Min" extracts the element that compares smallest
-	fmt.Println(h.ExtractMin())
+	fmt.Println(h.TakeMin()) // "Min" extracts the element that compares smallest
+	fmt.Println(h.TakeMin())
 
 	// Output:
 	// 7
 	// 5
 }
 
-func ExampleItem_Delete() {
+func ExampleHandle_Delete() {
 	h := heap.New[int]()
 
-	item1 := h.InsertItem(5)
-	item2 := h.InsertItem(3)
+	item1 := h.InsertHandle(5)
+	item2 := h.InsertHandle(3)
 	h.Insert(7)
 	h.Insert(1)
 
@@ -80,7 +80,7 @@ func ExampleItem_Delete() {
 
 	// Remaining elements
 	for h.Len() > 0 {
-		fmt.Println(h.ExtractMin())
+		fmt.Println(h.TakeMin())
 	}
 
 	// Output:
@@ -88,7 +88,7 @@ func ExampleItem_Delete() {
 	// 7
 }
 
-func ExampleItem_Adjust() {
+func ExampleHandle_Changed() {
 	// In a real use case, you'd wrap your mutable data structure
 	type mutableInt struct {
 		value int
@@ -102,7 +102,7 @@ func ExampleItem_Adjust() {
 	val2 := &mutableInt{3}
 	val3 := &mutableInt{7}
 
-	item1 := hm.InsertItem(val1)
+	item1 := hm.InsertHandle(val1)
 	hm.Insert(val2)
 	hm.Insert(val3)
 
@@ -113,7 +113,7 @@ func ExampleItem_Adjust() {
 	val1.value = 1
 
 	// Call Adjust to restore heap invariant
-	item1.Adjust()
+	item1.Changed()
 
 	// Now val1 should be the new minimum
 	fmt.Println(hm.Min().value)
@@ -131,19 +131,14 @@ func ExampleHeap_All() {
 	h.Insert(7)
 	h.Insert(1)
 
-	// Iterate over all elements
-	// First element is guaranteed to be the minimum
-	first := true
+	// Iterate over all elements.
+	sum := 0
 	for v := range h.All() {
-		if first {
-			fmt.Printf("Min: %d\n", v)
-			first = false
-		}
+		sum += v
 	}
 
-	fmt.Printf("Total elements: %d\n", h.Len())
+	fmt.Printf("Total elements %d, sum %d\n", h.Len(), sum)
 
 	// Output:
-	// Min: 1
-	// Total elements: 4
+	// Total elements 4, sum 16
 }

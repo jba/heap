@@ -19,7 +19,7 @@ func BenchmarkInsert(b *testing.B) {
 				h.Insert(n)
 			}
 			for h.Len() > 0 {
-				h.ExtractMin()
+				h.TakeMin()
 			}
 		}
 	})
@@ -28,10 +28,10 @@ func BenchmarkInsert(b *testing.B) {
 		for b.Loop() {
 			h := New[int]()
 			for _, n := range nums {
-				h.InsertItem(n)
+				h.InsertHandle(n)
 			}
 			for h.Len() > 0 {
-				h.ExtractMin()
+				h.TakeMin()
 			}
 		}
 	})
@@ -50,7 +50,7 @@ func BenchmarkHeapVsHeapFunc(b *testing.B) {
 				h.Insert(n)
 			}
 			for h.Len() > 0 {
-				h.ExtractMin()
+				h.TakeMin()
 			}
 		}
 	})
@@ -62,7 +62,7 @@ func BenchmarkHeapVsHeapFunc(b *testing.B) {
 				h.Insert(n)
 			}
 			for h.Len() > 0 {
-				h.ExtractMin()
+				h.TakeMin()
 			}
 		}
 	})

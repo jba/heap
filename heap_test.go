@@ -34,20 +34,20 @@ func TestHeapBasicOperations(t *testing.T) {
 	}
 
 	// Test ExtractMin
-	if min := h.ExtractMin(); min != 1 {
+	if min := h.TakeMin(); min != 1 {
 		t.Errorf("ExtractMin() = %d, want 1", min)
 	}
 	if h.Len() != 3 {
 		t.Errorf("after ExtractMin, len should be 3, got %d", h.Len())
 	}
 
-	if min := h.ExtractMin(); min != 3 {
+	if min := h.TakeMin(); min != 3 {
 		t.Errorf("ExtractMin() = %d, want 3", min)
 	}
-	if min := h.ExtractMin(); min != 5 {
+	if min := h.TakeMin(); min != 5 {
 		t.Errorf("ExtractMin() = %d, want 5", min)
 	}
-	if min := h.ExtractMin(); min != 7 {
+	if min := h.TakeMin(); min != 7 {
 		t.Errorf("ExtractMin() = %d, want 7", min)
 	}
 
@@ -69,10 +69,7 @@ func TestHeapBuild(t *testing.T) {
 	h.Build()
 
 	// Extract all elements - should come out in sorted order
-	var extracted []int
-	for h.Len() > 0 {
-		extracted = append(extracted, h.ExtractMin())
-	}
+	extracted := slices.Collect(h.Drain())
 
 	expected := []int{1, 2, 3, 5, 7, 8, 9}
 	if !slices.Equal(extracted, expected) {
@@ -97,16 +94,16 @@ func TestHeapFunc(t *testing.T) {
 	h.Insert(1)
 
 	// Should extract in descending order
-	if max := h.ExtractMin(); max != 7 {
+	if max := h.TakeMin(); max != 7 {
 		t.Errorf("ExtractMin() = %d, want 7", max)
 	}
-	if max := h.ExtractMin(); max != 5 {
+	if max := h.TakeMin(); max != 5 {
 		t.Errorf("ExtractMin() = %d, want 5", max)
 	}
-	if max := h.ExtractMin(); max != 3 {
+	if max := h.TakeMin(); max != 3 {
 		t.Errorf("ExtractMin() = %d, want 3", max)
 	}
-	if max := h.ExtractMin(); max != 1 {
+	if max := h.TakeMin(); max != 1 {
 		t.Errorf("ExtractMin() = %d, want 1", max)
 	}
 }
@@ -114,10 +111,10 @@ func TestHeapFunc(t *testing.T) {
 func TestItemDelete(t *testing.T) {
 	h := New[int]()
 
-	item1 := h.InsertItem(5)
-	item2 := h.InsertItem(3)
-	item3 := h.InsertItem(7)
-	item4 := h.InsertItem(1)
+	item1 := h.InsertHandle(5)
+	item2 := h.InsertHandle(3)
+	item3 := h.InsertHandle(7)
+	item4 := h.InsertHandle(1)
 
 	if h.Len() != 4 {
 		t.Fatalf("heap should have 4 elements, got %d", h.Len())
@@ -130,10 +127,7 @@ func TestItemDelete(t *testing.T) {
 	}
 
 	// Extract all remaining elements
-	var extracted []int
-	for h.Len() > 0 {
-		extracted = append(extracted, h.ExtractMin())
-	}
+	extracted := slices.Collect(h.Drain())
 
 	expected := []int{1, 5, 7}
 	if !slices.Equal(extracted, expected) {
@@ -162,9 +156,9 @@ func TestItemAdjust(t *testing.T) {
 	*vals[4] = 9
 
 	// Insert elements
-	items := make([]Item, 5)
+	items := make([]Handle, 5)
 	for i, v := range vals {
-		items[i] = h.InsertItem(v)
+		items[i] = h.InsertHandle(v)
 	}
 
 	// Build the heap to establish invariant
@@ -172,12 +166,12 @@ func TestItemAdjust(t *testing.T) {
 
 	// Modify vals[3] (currently 1) to 8
 	*vals[3] = 8
-	items[3].Adjust()
+	items[3].Changed()
 
 	// Extract all elements - should still be in sorted order
 	var extracted []int
-	for h.Len() > 0 {
-		extracted = append(extracted, *h.ExtractMin())
+	for v := range h.Drain() {
+		extracted = append(extracted, *v)
 	}
 
 	expected := []int{3, 5, 7, 8, 9}
@@ -189,10 +183,10 @@ func TestItemAdjust(t *testing.T) {
 func TestClear(t *testing.T) {
 	h := New[int]()
 
-	items := make([]Item, 3)
-	items[0] = h.InsertItem(5)
-	items[1] = h.InsertItem(3)
-	items[2] = h.InsertItem(7)
+	items := make([]Handle, 3)
+	items[0] = h.InsertHandle(5)
+	items[1] = h.InsertHandle(3)
+	items[2] = h.InsertHandle(7)
 
 	h.Clear()
 
@@ -202,7 +196,7 @@ func TestClear(t *testing.T) {
 
 	// Operations on items from cleared heap should be safe
 	items[0].Delete()
-	items[1].Adjust()
+	items[1].Changed()
 }
 
 func TestAll(t *testing.T) {
@@ -221,11 +215,6 @@ func TestAll(t *testing.T) {
 
 	if len(collected) != 5 {
 		t.Errorf("All() yielded %d elements, want 5", len(collected))
-	}
-
-	// First element should be the minimum
-	if collected[0] != 1 {
-		t.Errorf("first element from All() = %d, want 1", collected[0])
 	}
 
 	// All original values should be present
@@ -283,7 +272,7 @@ func TestPanicOnEmptyExtractMin(t *testing.T) {
 		}
 	}()
 
-	h.ExtractMin()
+	h.TakeMin()
 }
 
 func TestDelayedHeapification(t *testing.T) {
@@ -319,10 +308,7 @@ func TestHeapWithStrings(t *testing.T) {
 		t.Errorf("Min() = %q, want %q", min, "ant")
 	}
 
-	var extracted []string
-	for h.Len() > 0 {
-		extracted = append(extracted, h.ExtractMin())
-	}
+	extracted := slices.Collect(h.Drain())
 
 	expected := []string{"ant", "bird", "cat", "dog"}
 	if !slices.Equal(extracted, expected) {
@@ -340,8 +326,7 @@ func TestLargeHeap(t *testing.T) {
 
 	// Extract all and verify they come out sorted
 	prev := 0
-	for h.Len() > 0 {
-		curr := h.ExtractMin()
+	for curr := range h.Drain() {
 		if curr <= prev {
 			t.Errorf("extracted %d after %d, not in sorted order", curr, prev)
 		}
