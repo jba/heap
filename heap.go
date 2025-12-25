@@ -122,7 +122,7 @@ func (h *heapImpl[T]) insertHandle(e entry[T]) Handle {
 }
 
 // Min returns the minimum element in the heap without removing it.
-// Panics if the heap is empty.
+// It panics if the heap is empty.
 //
 // The first call to Min builds the heap if it hasn't been built yet.
 func (h *Heap[T]) Min() T {
@@ -130,7 +130,7 @@ func (h *Heap[T]) Min() T {
 }
 
 // Min returns the minimum element in the heap without removing it.
-// Panics if the heap is empty.
+// It panics if the heap is empty.
 //
 // The first call to Min builds the heap if it hasn't been built yet.
 func (h *HeapFunc[T]) Min() T {
@@ -146,7 +146,7 @@ func (h *heapImpl[T]) min() T {
 }
 
 // TakeMin removes and returns the minimum element from the heap.
-// Panics if the heap is empty.
+// It panics if the heap is empty.
 //
 // The first call to TakeMin builds the heap if it hasn't been built yet.
 func (h *Heap[T]) TakeMin() T {
@@ -154,7 +154,7 @@ func (h *Heap[T]) TakeMin() T {
 }
 
 // TakeMin removes and returns the minimum element from the heap.
-// Panics if the heap is empty.
+// It panics if the heap is empty.
 //
 // The first call to TakeMin builds the heap if it hasn't been built yet.
 func (h *HeapFunc[T]) TakeMin() T {
@@ -253,12 +253,16 @@ func (h *heapImpl[T]) all() iter.Seq[T] {
 
 // Drain removes and returns the heap elements in sorted order,
 // from smallest to largest.
+//
+// The result is undefined if the heap is changed during iteration.
 func (h *Heap[T]) Drain() iter.Seq[T] {
 	return h.impl.drain()
 }
 
 // Drain removes and returns the heap elements in sorted order,
 // from smallest to largest.
+//
+// The result is undefined if the heap is changed during iteration.
 func (h *HeapFunc[T]) Drain() iter.Seq[T] {
 	return h.impl.drain()
 }
@@ -284,7 +288,7 @@ func (h Handle) Delete() {
 }
 
 // Changed restores the heap invariant after the handle's value has been changed.
-// Call this method after modifying the value of the element that this Handle represents.
+// Call this method after modifying the value of the element that this handle represents.
 // If the handle has been deleted or the heap has been cleared, Changed does nothing.
 func (h Handle) Changed() {
 	if h.index == nil || *h.index < 0 {
