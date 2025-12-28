@@ -145,6 +145,35 @@ func (h *heapImpl[T]) min() T {
 	return h.data[0].value
 }
 
+// MinHandle returns a handle to the minimum element in the heap.
+// It panics if the heap is empty.
+//
+// The first call to MinHandle builds the heap if it hasn't been built yet.
+func (h *Heap[T]) MinHandle() Handle {
+	return h.impl.minHandle()
+}
+
+// MinHandle returns a handle to the minimum element in the heap.
+// It panics if the heap is empty.
+//
+// The first call to MinHandle builds the heap if it hasn't been built yet.
+func (h *HeapFunc[T]) MinHandle() Handle {
+	return h.impl.minHandle()
+}
+
+func (h *heapImpl[T]) minHandle() Handle {
+	h.ensureBuilt()
+	if len(h.data) == 0 {
+		panic("heap: MinHandle called on empty heap")
+	}
+	if h.data[0].index == nil {
+		idx := new(int)
+		*idx = 0
+		h.data[0].index = idx
+	}
+	return Handle{index: h.data[0].index, iface: h}
+}
+
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
 //
