@@ -13,8 +13,9 @@ type Heap[T cmp.Ordered] struct {
 
 // HeapFunc is a min-heap for any type with a custom comparison function.
 type HeapFunc[T any] struct {
-	impl    heapImpl[T]
-	compare func(T, T) int
+	impl      heapImpl[T]
+	compare   func(T, T) int
+	indexFunc func(T) *int
 }
 
 // heapImpl contains the data and provides shared implementation.
@@ -31,22 +32,10 @@ type mover interface {
 	down(i int) bool
 }
 
-// Handle represents an element in the heap and can be used to delete or modify it.
-type Handle struct {
-	index *int
-	iface handleInterface
-}
-
-// handleInterface allows Handle to call back into the heap implementation.
-type handleInterface interface {
-	deleteHandle(index *int)
-	changedHandle(index *int)
-}
-
 // entry stores a value and its index pointer.
 type entry[T any] struct {
 	value T
-	index *int // shared with the Handle; updated when the entry moves in the heap
+	index *int // Shared with user via indexFunc; updated when the entry moves in the heap.
 }
 
 // New creates a new min-heap for ordered types.
@@ -65,13 +54,20 @@ func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 	return h
 }
 
+// SetIndexFunc sets the function that returns a pointer to an index field
+// in the heap element. This must be called before first use if you want to
+// use Delete or Changed.
+func (h *HeapFunc[T]) SetIndexFunc(f func(T) *int) {
+	h.indexFunc = f
+}
+
 // Insert adds an element to the heap.
 //
 // Before the first call to other methods such as Min or TakeMin, Insert simply
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *Heap[T]) Insert(value T) {
-	h.impl.insert(entry[T]{value: value})
+	h.impl.insert(value, nil)
 }
 
 // Insert adds an element to the heap.
@@ -80,45 +76,19 @@ func (h *Heap[T]) Insert(value T) {
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *HeapFunc[T]) Insert(value T) {
-	h.impl.insert(entry[T]{value: value})
+	h.impl.insert(value, h.indexFunc)
 }
 
-func (h *heapImpl[T]) insert(e entry[T]) {
+func (h *heapImpl[T]) insert(value T, indexFunc func(T) *int) {
+	e := entry[T]{value: value}
+	if indexFunc != nil {
+		e.index = indexFunc(value)
+		*e.index = len(h.data)
+	}
 	h.data = append(h.data, e)
 	if h.built {
 		h.mover.up(len(h.data) - 1)
 	}
-}
-
-// InsertHandle adds an element to the heap and returns an Handle that can be used
-// to delete or adjust the element later.
-//
-// Before the first call to other methods such as Min or TakeMin, InsertHandle simply
-// appends to an internal slice without maintaining the heap invariant. Call Build
-// explicitly if you want to ensure the heap is built after a batch of insertions.
-func (h *Heap[T]) InsertHandle(value T) Handle {
-	return h.impl.insertHandle(entry[T]{value: value})
-}
-
-// InsertHandle adds an element to the heap and returns an Handle that can be used
-// to delete or adjust the element later.
-//
-// Before the first call to other methods such as Min or TakeMin, InsertHandle simply
-// appends to an internal slice without maintaining the heap invariant. Call Build
-// explicitly if you want to ensure the heap is built after a batch of insertions.
-func (h *HeapFunc[T]) InsertHandle(value T) Handle {
-	return h.impl.insertHandle(entry[T]{value: value})
-}
-
-func (h *heapImpl[T]) insertHandle(e entry[T]) Handle {
-	idx := new(int)
-	*idx = len(h.data)
-	e.index = idx
-	h.data = append(h.data, e)
-	if h.built {
-		h.mover.up(len(h.data) - 1)
-	}
-	return Handle{index: idx, iface: h}
 }
 
 // Min returns the minimum element in the heap without removing it.
@@ -145,35 +115,6 @@ func (h *heapImpl[T]) min() T {
 	return h.data[0].value
 }
 
-// MinHandle returns a handle to the minimum element in the heap.
-// It panics if the heap is empty.
-//
-// The first call to MinHandle builds the heap if it hasn't been built yet.
-func (h *Heap[T]) MinHandle() Handle {
-	return h.impl.minHandle()
-}
-
-// MinHandle returns a handle to the minimum element in the heap.
-// It panics if the heap is empty.
-//
-// The first call to MinHandle builds the heap if it hasn't been built yet.
-func (h *HeapFunc[T]) MinHandle() Handle {
-	return h.impl.minHandle()
-}
-
-func (h *heapImpl[T]) minHandle() Handle {
-	h.ensureBuilt()
-	if len(h.data) == 0 {
-		panic("heap: MinHandle called on empty heap")
-	}
-	if h.data[0].index == nil {
-		idx := new(int)
-		*idx = 0
-		h.data[0].index = idx
-	}
-	return Handle{index: h.data[0].index, iface: h}
-}
-
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
 //
@@ -198,6 +139,31 @@ func (h *heapImpl[T]) takeMin() T {
 	min := h.data[0].value
 	h.deleteAt(0)
 	return min
+}
+
+// ChangeMin replaces the minimum value in the heap with the given value.
+// It panics if the heap is empty.
+//
+// The first call to ChangeMin builds the heap if it hasn't been built yet.
+func (h *Heap[T]) ChangeMin(v T) {
+	h.impl.changeMin(v)
+}
+
+// ChangeMin replaces the minimum value in the heap with the given value.
+// It panics if the heap is empty.
+//
+// The first call to ChangeMin builds the heap if it hasn't been built yet.
+func (h *HeapFunc[T]) ChangeMin(v T) {
+	h.impl.changeMin(v)
+}
+
+func (h *heapImpl[T]) changeMin(v T) {
+	h.ensureBuilt()
+	if len(h.data) == 0 {
+		panic("heap: ChangeMin called on empty heap")
+	}
+	h.data[0].value = v
+	h.mover.down(0)
 }
 
 // Build rebuilds the heap in O(n) time.
@@ -306,44 +272,25 @@ func (h *heapImpl[T]) drain() iter.Seq[T] {
 	}
 }
 
-// Delete removes this handle from the heap.
-// If the handle has already been deleted or the heap has been cleared,
+// Delete removes the item with the given index from the heap.
+// If the item has already been deleted or the heap has been cleared,
 // Delete does nothing.
-func (h Handle) Delete() {
-	if h.index == nil || *h.index < 0 {
-		return // already deleted
+//
+// The HeapFunc must have an index function.
+func (h *HeapFunc[T]) Delete(v T) {
+	if h.indexFunc == nil {
+		panic("heap.Delete: no index function")
 	}
-	h.iface.deleteHandle(h.index)
-}
-
-// Changed restores the heap invariant after the handle's value has been changed.
-// Call this method after modifying the value of the element that this handle represents.
-// If the handle has been deleted or the heap has been cleared, Changed does nothing.
-func (h Handle) Changed() {
-	if h.index == nil || *h.index < 0 {
-		return // deleted handle
-	}
-	h.iface.changedHandle(h.index)
-}
-
-func (h *heapImpl[T]) deleteHandle(index *int) {
-	h.ensureBuilt()
-	i := *index
-	if i < 0 || i >= len(h.data) {
+	pi := h.indexFunc(v)
+	if *pi < 0 || *pi >= len(h.impl.data) {
 		return
 	}
-	h.deleteAt(i)
-}
-
-func (h *heapImpl[T]) changedHandle(index *int) {
-	h.ensureBuilt()
-	i := *index
-	if i < 0 || i >= len(h.data) {
-		return
+	// Sanity check: the entry at v's index should point to the same place.
+	if h.impl.data[*pi].index != pi {
+		panic("heap.Delete: index pointer mismatch")
 	}
-	if !h.mover.down(i) {
-		h.mover.up(i)
-	}
+	h.impl.deleteAt(*pi)
+	*pi = -1
 }
 
 func (h *heapImpl[T]) deleteAt(i int) {
@@ -359,6 +306,31 @@ func (h *heapImpl[T]) deleteAt(i int) {
 		}
 	} else {
 		h.data = h.data[:n]
+	}
+}
+
+// Changed restores the heap invariant after the item's value has been changed.
+// Call this method after modifying the value of the item.
+// If the item has been deleted or the heap has been cleared, Changed does nothing.
+//
+// Changed builds the heap if unbuilt.
+//
+// The HeapFunc must have an index function.
+func (h *HeapFunc[T]) Changed(v T) {
+	if h.indexFunc == nil {
+		panic("heap.Changed: no index function")
+	}
+	ip := h.indexFunc(v)
+	if *ip < 0 || *ip >= len(h.impl.data) {
+		return
+	}
+	// Sanity check: the entry at v's index should point to the same place.
+	if h.impl.data[*ip].index != ip {
+		panic("heap.Changed: index pointer mismatch")
+	}
+	h.impl.ensureBuilt()
+	if !h.impl.mover.down(*ip) {
+		h.impl.mover.up(*ip)
 	}
 }
 

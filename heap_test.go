@@ -1,6 +1,7 @@
 package heap
 
 import (
+	"cmp"
 	"slices"
 	"testing"
 )
@@ -108,85 +109,107 @@ func TestHeapFunc(t *testing.T) {
 	}
 }
 
-func TestItemDelete(t *testing.T) {
-	h := New[int]()
+type intIndexed struct {
+	value int
+	index int
+}
 
-	item1 := h.InsertHandle(5)
-	item2 := h.InsertHandle(3)
-	item3 := h.InsertHandle(7)
-	item4 := h.InsertHandle(1)
+func TestItemDelete(t *testing.T) {
+	h := NewFunc(func(a, b *intIndexed) int {
+		return cmp.Compare(a.value, b.value)
+	})
+	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+	items := []*intIndexed{
+		{value: 1},
+		{value: 3},
+		{value: 7},
+		{value: 5},
+	}
+	for _, e := range items {
+		h.Insert(e)
+	}
 
 	if h.Len() != 4 {
 		t.Fatalf("heap should have 4 elements, got %d", h.Len())
 	}
 
 	// Delete the middle element
-	item2.Delete()
+	h.Delete(items[1])
 	if h.Len() != 3 {
 		t.Errorf("after Delete, heap should have 3 elements, got %d", h.Len())
 	}
 
 	// Extract all remaining elements
-	extracted := slices.Collect(h.Drain())
-
-	expected := []int{1, 5, 7}
-	if !slices.Equal(extracted, expected) {
-		t.Errorf("extracted = %v, want %v", extracted, expected)
+	var got []int
+	for e := range h.Drain() {
+		got = append(got, e.value)
 	}
 
-	// Delete an already-deleted item should be safe
-	item2.Delete()
+	want := []int{1, 5, 7}
+	if !slices.Equal(got, want) {
+		t.Errorf("got = %v, want %v", got, want)
+	}
 
-	// Delete remaining items should be safe
-	item1.Delete()
-	item3.Delete()
-	item4.Delete()
+	// Deleting already-deleted or existing items should be safe.
+	for _, i := range items {
+		h.Delete(i)
+	}
+
+	if g := h.Len(); g != 0 {
+		t.Errorf("want zero len, got %d", g)
+	}
 }
 
 func TestItemAdjust(t *testing.T) {
-	// Use a heap of *int so we can modify values through pointers
-	h := NewFunc(func(a, b *int) int { return *a - *b })
+	h := NewFunc(func(a, b *intIndexed) int {
+		return cmp.Compare(a.value, b.value)
+	})
+	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
 
-	// Create values we can modify
-	vals := []*int{new(int), new(int), new(int), new(int), new(int)}
-	*vals[0] = 5
-	*vals[1] = 3
-	*vals[2] = 7
-	*vals[3] = 1
-	*vals[4] = 9
-
-	// Insert elements
-	items := make([]Handle, 5)
-	for i, v := range vals {
-		items[i] = h.InsertHandle(v)
+	items := []*intIndexed{
+		{value: 5},
+		{value: 3},
+		{value: 7},
+		{value: 1},
+		{value: 9},
+	}
+	for _, item := range items {
+		h.Insert(item)
 	}
 
-	// Build the heap to establish invariant
+	// Build the heap to establish invariant.
 	h.Build()
 
-	// Modify vals[3] (currently 1) to 8
-	*vals[3] = 8
-	items[3].Changed()
+	// Modify items[3] (currently 1) to 8.
+	items[3].value = 8
+	h.Changed(items[3])
 
-	// Extract all elements - should still be in sorted order
-	var extracted []int
+	// Extract all elements - should still be in sorted order.
+	var got []int
 	for v := range h.Drain() {
-		extracted = append(extracted, *v)
+		got = append(got, v.value)
 	}
 
-	expected := []int{3, 5, 7, 8, 9}
-	if !slices.Equal(extracted, expected) {
-		t.Errorf("after Adjust, extracted = %v, want %v", extracted, expected)
+	want := []int{3, 5, 7, 8, 9}
+	if !slices.Equal(got, want) {
+		t.Errorf("after Adjust, got = %v, want %v", got, want)
 	}
 }
 
 func TestClear(t *testing.T) {
-	h := New[int]()
+	h := NewFunc(func(a, b *intIndexed) int {
+		return cmp.Compare(a.value, b.value)
+	})
+	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
 
-	items := make([]Handle, 3)
-	items[0] = h.InsertHandle(5)
-	items[1] = h.InsertHandle(3)
-	items[2] = h.InsertHandle(7)
+	items := []*intIndexed{
+		{value: 5},
+		{value: 3},
+		{value: 7},
+	}
+	for _, item := range items {
+		h.Insert(item)
+	}
 
 	h.Clear()
 
@@ -194,9 +217,16 @@ func TestClear(t *testing.T) {
 		t.Errorf("after Clear, len should be 0, got %d", h.Len())
 	}
 
-	// Operations on items from cleared heap should be safe
-	items[0].Delete()
-	items[1].Changed()
+	// Verify indices are set to -1 after clear.
+	for _, item := range items {
+		if item.index != -1 {
+			t.Errorf("after Clear, item.index = %d, want -1", item.index)
+		}
+	}
+
+	// Operations on items from cleared heap should be safe.
+	h.Delete(items[0])
+	h.Changed(items[1])
 }
 
 func TestAll(t *testing.T) {
@@ -228,7 +258,7 @@ func TestAll(t *testing.T) {
 func TestAllEarlyBreak(t *testing.T) {
 	h := New[int]()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		h.Insert(i)
 	}
 
@@ -335,5 +365,43 @@ func TestLargeHeap(t *testing.T) {
 
 	if prev != 1000 {
 		t.Errorf("last extracted value = %d, want 1000", prev)
+	}
+}
+
+func TestIndexFuncNoAllocs(t *testing.T) {
+	h := NewFunc(func(a, b *intIndexed) int {
+		return cmp.Compare(a.value, b.value)
+	})
+	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+
+	items := make([]*intIndexed, 100)
+	for i := range items {
+		items[i] = &intIndexed{value: i}
+	}
+	for _, item := range items {
+		h.Insert(item)
+	}
+	h.Build()
+
+	// Verify Delete requires no allocation.
+	allocs := testing.AllocsPerRun(5, func() {
+		h.Delete(items[50])
+		// Re-insert so we can delete again.
+		items[50].value = 50
+		h.Insert(items[50])
+	})
+	if allocs != 0 {
+		t.Errorf("Delete: got %v allocs, want 0", allocs)
+	}
+
+	// Verify Changed requires no allocation.
+	allocs = testing.AllocsPerRun(5, func() {
+		items[25].value = 1000
+		h.Changed(items[25])
+		items[25].value = 25
+		h.Changed(items[25])
+	})
+	if allocs != 0 {
+		t.Errorf("Changed: got %v allocs, want 0", allocs)
 	}
 }

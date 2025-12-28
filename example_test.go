@@ -66,21 +66,34 @@ func ExampleHeapFunc() {
 	// 5
 }
 
-func ExampleHandle_Delete() {
-	h := heap.New[int]()
+func ExampleHeapFunc_Delete() {
+	type intWithIndex struct {
+		value int
+		index int
+	}
 
-	item1 := h.InsertHandle(5)
-	item2 := h.InsertHandle(3)
-	h.Insert(7)
-	h.Insert(1)
+	h := heap.NewFunc(func(a, b *intWithIndex) int {
+		return a.value - b.value
+	})
+	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
 
-	// Delete specific items
-	item1.Delete()
-	item2.Delete()
+	item1 := &intWithIndex{value: 5}
+	item2 := &intWithIndex{value: 3}
+	item3 := &intWithIndex{value: 7}
+	item4 := &intWithIndex{value: 1}
 
-	// Remaining elements
-	for h.Len() > 0 {
-		fmt.Println(h.TakeMin())
+	h.Insert(item1)
+	h.Insert(item2)
+	h.Insert(item3)
+	h.Insert(item4)
+
+	// Delete specific items.
+	h.Delete(item1)
+	h.Delete(item2)
+
+	// Remaining elements.
+	for v := range h.Drain() {
+		fmt.Println(v.value)
 	}
 
 	// Output:
@@ -88,39 +101,76 @@ func ExampleHandle_Delete() {
 	// 7
 }
 
-func ExampleHandle_Changed() {
-	// In a real use case, you'd wrap your mutable data structure
-	type mutableInt struct {
+func ExampleHeapFunc_Changed() {
+	type intWithIndex struct {
 		value int
+		index int
 	}
 
-	hm := heap.NewFunc(func(a, b *mutableInt) int {
+	h := heap.NewFunc(func(a, b *intWithIndex) int {
 		return a.value - b.value
 	})
+	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
 
-	val1 := &mutableInt{5}
-	val2 := &mutableInt{3}
-	val3 := &mutableInt{7}
+	item1 := &intWithIndex{value: 5}
+	item2 := &intWithIndex{value: 3}
+	item3 := &intWithIndex{value: 7}
 
-	item1 := hm.InsertHandle(val1)
-	hm.Insert(val2)
-	hm.Insert(val3)
+	h.Insert(item1)
+	h.Insert(item2)
+	h.Insert(item3)
 
-	// Get the current min
-	fmt.Println(hm.Min().value)
+	// Get the current min.
+	fmt.Println(h.Min().value)
 
-	// Modify val1's value (currently 5, make it smaller)
-	val1.value = 1
+	// Modify item1's value (currently 5, make it smaller).
+	item1.value = 1
 
-	// Call Adjust to restore heap invariant
-	item1.Changed()
+	// Call Changed to restore heap invariant.
+	h.Changed(item1)
 
-	// Now val1 should be the new minimum
-	fmt.Println(hm.Min().value)
+	// Now item1 should be the new minimum.
+	fmt.Println(h.Min().value)
 
 	// Output:
 	// 3
 	// 1
+}
+
+// ExampleHeap_ChangeMin demonstrates finding the K largest elements
+// using a min-heap and ChangeMin.
+// This is commonly known as the "top K" algorithm.
+func ExampleHeap_ChangeMin() {
+	// To find the K largest elements, use a min-heap of size K.
+	// The heap's min is the smallest of the K largest seen so far.
+	h := heap.New[int]()
+
+	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
+	k := 3
+
+	// Insert first K elements.
+	for _, v := range data[:k] {
+		h.Insert(v)
+	}
+
+	// For remaining elements, replace the min if we find a larger value.
+	for _, v := range data[k:] {
+		if v > h.Min() {
+			h.ChangeMin(v)
+		}
+	}
+
+	// Drain the heap to get the K largest (in ascending order).
+	fmt.Println("3 largest elements:")
+	for v := range h.Drain() {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3 largest elements:
+	// 8
+	// 9
+	// 10
 }
 
 func ExampleHeap_All() {
