@@ -306,18 +306,13 @@ func (h *heapImpl[T]) deleteAt(i int) {
 	n := len(h.values) - 1
 	if n != i {
 		h.swap(i, n)
-		h.values = h.values[:n]
-		if h.indexes != nil {
-			h.indexes = h.indexes[:n]
-		}
-		if !h.mover.down(i) {
-			h.mover.up(i)
-		}
-	} else {
-		h.values = h.values[:n]
-		if h.indexes != nil {
-			h.indexes = h.indexes[:n]
-		}
+	}
+	h.values = h.values[:n]
+	if h.indexes != nil {
+		h.indexes = h.indexes[:n]
+	}
+	if n != i && !h.mover.down(i) {
+		h.mover.up(i)
 	}
 }
 
