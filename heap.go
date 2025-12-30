@@ -13,29 +13,24 @@ type Heap[T cmp.Ordered] struct {
 
 // HeapFunc is a min-heap for any type with a custom comparison function.
 type HeapFunc[T any] struct {
-	impl      heapImpl[T]
-	compare   func(T, T) int
-	indexFunc func(T) *int
+	impl    heapImpl[T]
+	compare func(T, T) int
 }
 
 // heapImpl contains the data and provides shared implementation.
 // It uses the mover interface to call type-specific up/down methods.
 type heapImpl[T any] struct {
-	data  []entry[T]
-	built bool // true if the heap invariant is currently maintained
-	mover mover
+	values    []T
+	indexes   []*int // from calls to indexFunc; updated in swap
+	indexFunc func(T) *int
+	built     bool // true if the heap invariant is currently maintained
+	mover     mover
 }
 
 // mover provides the up and down operations that differ between Heap and HeapFunc.
 type mover interface {
 	up(i int)
 	down(i int) bool
-}
-
-// entry stores a value and its index pointer.
-type entry[T any] struct {
-	value T
-	index *int // Shared with user via indexFunc; updated when the entry moves in the heap.
 }
 
 // New creates a new min-heap for ordered types.
@@ -55,10 +50,17 @@ func NewFunc[T any](compare func(T, T) int) *HeapFunc[T] {
 }
 
 // SetIndexFunc sets the function that returns a pointer to an index field
-// in the heap element. This must be called before first use if you want to
-// use Delete or Changed.
+// in the heap element. The index function must not return nil.
+//
+// SetIndexFunc enables the use of the Delete and Changed methods.
+// It must be called initially, before any other method is called.
 func (h *HeapFunc[T]) SetIndexFunc(f func(T) *int) {
+	h.impl.setIndexFunc(f)
+}
+
+func (h *heapImpl[T]) setIndexFunc(f func(T) *int) {
 	h.indexFunc = f
+	h.indexes = make([]*int, len(h.values))
 }
 
 // Insert adds an element to the heap.
@@ -67,7 +69,7 @@ func (h *HeapFunc[T]) SetIndexFunc(f func(T) *int) {
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *Heap[T]) Insert(value T) {
-	h.impl.insert(value, nil)
+	h.impl.insert(value)
 }
 
 // Insert adds an element to the heap.
@@ -76,18 +78,18 @@ func (h *Heap[T]) Insert(value T) {
 // appends to an internal slice without maintaining the heap invariant. Call Build
 // explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *HeapFunc[T]) Insert(value T) {
-	h.impl.insert(value, h.indexFunc)
+	h.impl.insert(value)
 }
 
-func (h *heapImpl[T]) insert(value T, indexFunc func(T) *int) {
-	e := entry[T]{value: value}
-	if indexFunc != nil {
-		e.index = indexFunc(value)
-		*e.index = len(h.data)
+func (h *heapImpl[T]) insert(value T) {
+	h.values = append(h.values, value)
+	if h.indexes != nil {
+		p := h.indexFunc(value)
+		*p = len(h.indexes)
+		h.indexes = append(h.indexes, p)
 	}
-	h.data = append(h.data, e)
 	if h.built {
-		h.mover.up(len(h.data) - 1)
+		h.mover.up(len(h.values) - 1)
 	}
 }
 
@@ -109,10 +111,10 @@ func (h *HeapFunc[T]) Min() T {
 
 func (h *heapImpl[T]) min() T {
 	h.ensureBuilt()
-	if len(h.data) == 0 {
+	if len(h.values) == 0 {
 		panic("heap: Min called on empty heap")
 	}
-	return h.data[0].value
+	return h.values[0]
 }
 
 // TakeMin removes and returns the minimum element from the heap.
@@ -133,10 +135,10 @@ func (h *HeapFunc[T]) TakeMin() T {
 
 func (h *heapImpl[T]) takeMin() T {
 	h.ensureBuilt()
-	if len(h.data) == 0 {
+	if len(h.values) == 0 {
 		panic("heap: TakeMin called on empty heap")
 	}
-	min := h.data[0].value
+	min := h.values[0]
 	h.deleteAt(0)
 	return min
 }
@@ -159,10 +161,10 @@ func (h *HeapFunc[T]) ChangeMin(v T) {
 
 func (h *heapImpl[T]) changeMin(v T) {
 	h.ensureBuilt()
-	if len(h.data) == 0 {
+	if len(h.values) == 0 {
 		panic("heap: ChangeMin called on empty heap")
 	}
-	h.data[0].value = v
+	h.values[0] = v
 	h.mover.down(0)
 }
 
@@ -187,7 +189,7 @@ func (h *heapImpl[T]) ensureBuilt() {
 }
 
 func (h *heapImpl[T]) build() {
-	n := len(h.data)
+	n := len(h.values)
 	for i := n/2 - 1; i >= 0; i-- {
 		h.mover.down(i)
 	}
@@ -205,23 +207,24 @@ func (h *HeapFunc[T]) Clear() {
 }
 
 func (h *heapImpl[T]) clear() {
-	for i := range h.data {
-		if h.data[i].index != nil {
-			*h.data[i].index = -1
-		}
+	// TODO: see if we can avoid the setting to -1, by having
+	// uses check that indexFunc(v) == h.indexes[i].
+	for i := range h.indexes {
+		*h.indexes[i] = -1
 	}
-	h.data = h.data[:0]
+	h.values = h.values[:0]
+	h.indexes = h.indexes[:0]
 	h.built = false
 }
 
 // Len returns the number of elements in the heap.
 func (h *Heap[T]) Len() int {
-	return len(h.impl.data)
+	return len(h.impl.values)
 }
 
 // Len returns the number of elements in the heap.
 func (h *HeapFunc[T]) Len() int {
-	return len(h.impl.data)
+	return len(h.impl.values)
 }
 
 // All returns an iterator over all elements in the heap
@@ -238,8 +241,8 @@ func (h *HeapFunc[T]) All() iter.Seq[T] {
 
 func (h *heapImpl[T]) all() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for _, e := range h.data {
-			if !yield(e.value) {
+		for _, v := range h.values {
+			if !yield(v) {
 				return
 			}
 		}
@@ -264,7 +267,7 @@ func (h *HeapFunc[T]) Drain() iter.Seq[T] {
 
 func (h *heapImpl[T]) drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for len(h.data) > 0 {
+		for len(h.values) > 0 {
 			if !yield(h.takeMin()) {
 				return
 			}
@@ -278,34 +281,43 @@ func (h *heapImpl[T]) drain() iter.Seq[T] {
 //
 // The HeapFunc must have an index function.
 func (h *HeapFunc[T]) Delete(v T) {
+	h.impl.delete(v)
+}
+
+func (h *heapImpl[T]) delete(v T) {
 	if h.indexFunc == nil {
-		panic("heap.Delete: no index function")
+		panic("heap: Delete: SetIndexFunc was not called")
 	}
 	pi := h.indexFunc(v)
-	if *pi < 0 || *pi >= len(h.impl.data) {
+	if *pi < 0 || *pi >= len(h.values) {
 		return
 	}
 	// Sanity check: the entry at v's index should point to the same place.
-	if h.impl.data[*pi].index != pi {
-		panic("heap.Delete: index pointer mismatch")
+	if h.indexes[*pi] != pi {
+		panic("heap: Delete: index pointer mismatch")
 	}
-	h.impl.deleteAt(*pi)
-	*pi = -1
+	h.deleteAt(*pi)
 }
 
 func (h *heapImpl[T]) deleteAt(i int) {
-	if h.data[i].index != nil {
-		*h.data[i].index = -1
+	if h.indexes != nil {
+		*h.indexes[i] = -1
 	}
-	n := len(h.data) - 1
+	n := len(h.values) - 1
 	if n != i {
 		h.swap(i, n)
-		h.data = h.data[:n]
+		h.values = h.values[:n]
+		if h.indexes != nil {
+			h.indexes = h.indexes[:n]
+		}
 		if !h.mover.down(i) {
 			h.mover.up(i)
 		}
 	} else {
-		h.data = h.data[:n]
+		h.values = h.values[:n]
+		if h.indexes != nil {
+			h.indexes = h.indexes[:n]
+		}
 	}
 }
 
@@ -317,20 +329,24 @@ func (h *heapImpl[T]) deleteAt(i int) {
 //
 // The HeapFunc must have an index function.
 func (h *HeapFunc[T]) Changed(v T) {
+	h.impl.changed(v)
+}
+
+func (h *heapImpl[T]) changed(v T) {
 	if h.indexFunc == nil {
-		panic("heap.Changed: no index function")
+		panic("heap: Changed: no index function")
 	}
 	ip := h.indexFunc(v)
-	if *ip < 0 || *ip >= len(h.impl.data) {
+	if *ip < 0 || *ip >= len(h.values) {
 		return
 	}
 	// Sanity check: the entry at v's index should point to the same place.
-	if h.impl.data[*ip].index != ip {
-		panic("heap.Changed: index pointer mismatch")
+	if h.indexes[*ip] != ip {
+		panic("heap: Changed: index pointer mismatch")
 	}
-	h.impl.ensureBuilt()
-	if !h.impl.mover.down(*ip) {
-		h.impl.mover.up(*ip)
+	h.ensureBuilt()
+	if !h.mover.down(*ip) {
+		h.mover.up(*ip)
 	}
 }
 
@@ -338,7 +354,7 @@ func (h *HeapFunc[T]) Changed(v T) {
 func (h *Heap[T]) up(i int) {
 	for i > 0 {
 		p := (i - 1) / 2 // parent
-		if cmp.Compare(h.impl.data[i].value, h.impl.data[p].value) >= 0 {
+		if cmp.Compare(h.impl.values[i], h.impl.values[p]) >= 0 {
 			break
 		}
 		h.impl.swap(p, i)
@@ -350,7 +366,7 @@ func (h *Heap[T]) up(i int) {
 func (h *HeapFunc[T]) up(i int) {
 	for i > 0 {
 		p := (i - 1) / 2 // parent
-		if h.compare(h.impl.data[i].value, h.impl.data[p].value) >= 0 {
+		if h.compare(h.impl.values[i], h.impl.values[p]) >= 0 {
 			break
 		}
 		h.impl.swap(p, i)
@@ -361,7 +377,7 @@ func (h *HeapFunc[T]) up(i int) {
 // down moves the element at index i down the heap until the heap invariant is restored.
 // Returns true if the element moved.
 func (h *Heap[T]) down(i int) bool {
-	data := h.impl.data
+	data := h.impl.values
 	n := len(data)
 	i0 := i
 	for {
@@ -370,10 +386,10 @@ func (h *Heap[T]) down(i int) bool {
 			break
 		}
 		child := lc // left child
-		if rc := lc + 1; rc < n && cmp.Compare(data[rc].value, data[lc].value) < 0 {
+		if rc := lc + 1; rc < n && cmp.Compare(data[rc], data[lc]) < 0 {
 			child = rc // right child is smaller
 		}
-		if cmp.Compare(data[child].value, data[i].value) >= 0 {
+		if cmp.Compare(data[child], data[i]) >= 0 {
 			break
 		}
 		h.impl.swap(i, child)
@@ -385,7 +401,7 @@ func (h *Heap[T]) down(i int) bool {
 // down moves the element at index i down the heap until the heap invariant is restored.
 // Returns true if the element moved.
 func (h *HeapFunc[T]) down(i int) bool {
-	data := h.impl.data
+	data := h.impl.values
 	n := len(data)
 	i0 := i
 	for {
@@ -394,10 +410,10 @@ func (h *HeapFunc[T]) down(i int) bool {
 			break
 		}
 		child := lc // left child
-		if rc := lc + 1; rc < n && h.compare(data[rc].value, data[lc].value) < 0 {
+		if rc := lc + 1; rc < n && h.compare(data[rc], data[lc]) < 0 {
 			child = rc // right child is smaller
 		}
-		if h.compare(data[child].value, data[i].value) >= 0 {
+		if h.compare(data[child], data[i]) >= 0 {
 			break
 		}
 		h.impl.swap(i, child)
@@ -407,11 +423,10 @@ func (h *HeapFunc[T]) down(i int) bool {
 }
 
 func (h *heapImpl[T]) swap(i, j int) {
-	h.data[i], h.data[j] = h.data[j], h.data[i]
-	if h.data[i].index != nil {
-		*h.data[i].index = i
-	}
-	if h.data[j].index != nil {
-		*h.data[j].index = j
+	h.values[i], h.values[j] = h.values[j], h.values[i]
+	if h.indexes != nil {
+		h.indexes[i], h.indexes[j] = h.indexes[j], h.indexes[i]
+		*h.indexes[i] = i
+		*h.indexes[j] = j
 	}
 }
