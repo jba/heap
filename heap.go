@@ -207,13 +207,19 @@ func (h *HeapFunc[T]) Clear() {
 }
 
 func (h *heapImpl[T]) clear() {
-	// TODO: see if we can avoid the setting to -1, by having
-	// uses check that indexFunc(v) == h.indexes[i].
-	for i := range h.indexes {
-		*h.indexes[i] = -1
+	// Alternative: set slices to nil.
+	var zero T
+	for i := range h.values {
+		h.values[i] = zero // allow GC
 	}
 	h.values = h.values[:0]
-	h.indexes = h.indexes[:0]
+	if h.indexes != nil {
+		for i := range h.indexes {
+			*h.indexes[i] = -1
+			h.indexes[i] = nil // allow GC
+		}
+		h.indexes = h.indexes[:0]
+	}
 	h.built = false
 }
 
@@ -307,8 +313,11 @@ func (h *heapImpl[T]) deleteAt(i int) {
 	if n != i {
 		h.swap(i, n)
 	}
+	var zero T
+	h.values[n] = zero // allow GC
 	h.values = h.values[:n]
 	if h.indexes != nil {
+		h.indexes[n] = nil // allow GC
 		h.indexes = h.indexes[:n]
 	}
 	if n != i && !h.mover.down(i) {
