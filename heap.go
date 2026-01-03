@@ -151,13 +151,13 @@ func (h *Heap[T]) ChangeMin(v T) {
 	h.impl.changeMin(v)
 }
 
-// ChangeMin replaces the minimum value in the heap with the given value.
-// It panics if the heap is empty.
-//
-// The first call to ChangeMin builds the heap if it hasn't been built yet.
-func (h *HeapFunc[T]) ChangeMin(v T) {
-	h.impl.changeMin(v)
-}
+// // ChangeMin replaces the minimum value in the heap with the given value.
+// // It panics if the heap is empty.
+// //
+// // The first call to ChangeMin builds the heap if it hasn't been built yet.
+// func (h *HeapFunc[T]) ChangeMin(v T) {
+// 	h.impl.changeMin(v)
+// }
 
 func (h *heapImpl[T]) changeMin(v T) {
 	h.ensureBuilt()
