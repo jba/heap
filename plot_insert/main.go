@@ -38,8 +38,6 @@ func main() {
 			for i := 0; i < n; i++ {
 				h.Insert(rand.Int())
 			}
-			h.Build()
-
 			// Time a single insert
 			val := rand.Int()
 			start := time.Now()

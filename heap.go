@@ -23,7 +23,6 @@ type heapImpl[T any] struct {
 	values    []T
 	indexes   []*int // from calls to indexFunc; updated in swap
 	indexFunc func(T) *int
-	built     bool // true if the heap invariant is currently maintained
 	mover     mover
 }
 
@@ -64,19 +63,11 @@ func (h *heapImpl[T]) setIndexFunc(f func(T) *int) {
 }
 
 // Insert adds an element to the heap.
-//
-// Before the first call to other methods such as Min or TakeMin, Insert simply
-// appends to an internal slice without maintaining the heap invariant. Call Build
-// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *Heap[T]) Insert(value T) {
 	h.impl.insert(value)
 }
 
 // Insert adds an element to the heap.
-//
-// Before the first call to other methods such as Min or TakeMin, Insert simply
-// appends to an internal slice without maintaining the heap invariant. Call Build
-// explicitly if you want to ensure the heap is built after a batch of insertions.
 func (h *HeapFunc[T]) Insert(value T) {
 	h.impl.insert(value)
 }
@@ -88,29 +79,51 @@ func (h *heapImpl[T]) insert(value T) {
 		*p = len(h.indexes)
 		h.indexes = append(h.indexes, p)
 	}
-	if h.built {
-		h.mover.up(len(h.values) - 1)
+	h.mover.up(len(h.values) - 1)
+}
+
+// InsertSlice adds all elements of s to the heap, then heapifies.
+// The caller must not subsequently modify s.
+func (h *Heap[T]) InsertSlice(s []T) {
+	h.impl.insertSlice(s)
+}
+
+// InsertSlice adds all elements of s to the heap, then heapifies.
+// The caller must not subsequently modify s.
+func (h *HeapFunc[T]) InsertSlice(s []T) {
+	h.impl.insertSlice(s)
+}
+
+func (h *heapImpl[T]) insertSlice(s []T) {
+	if h.values == nil {
+		h.values = s
+	} else {
+		h.values = append(h.values, s...)
 	}
+	if h.indexFunc != nil {
+		start := len(h.indexes)
+		for i, v := range s {
+			p := h.indexFunc(v)
+			*p = start + i
+			h.indexes = append(h.indexes, p)
+		}
+	}
+	h.build()
 }
 
 // Min returns the minimum element in the heap without removing it.
 // It panics if the heap is empty.
-//
-// The first call to Min builds the heap if it hasn't been built yet.
 func (h *Heap[T]) Min() T {
 	return h.impl.min()
 }
 
 // Min returns the minimum element in the heap without removing it.
 // It panics if the heap is empty.
-//
-// The first call to Min builds the heap if it hasn't been built yet.
 func (h *HeapFunc[T]) Min() T {
 	return h.impl.min()
 }
 
 func (h *heapImpl[T]) min() T {
-	h.ensureBuilt()
 	if len(h.values) == 0 {
 		panic("heap: Min called on empty heap")
 	}
@@ -119,22 +132,17 @@ func (h *heapImpl[T]) min() T {
 
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
-//
-// The first call to TakeMin builds the heap if it hasn't been built yet.
 func (h *Heap[T]) TakeMin() T {
 	return h.impl.takeMin()
 }
 
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
-//
-// The first call to TakeMin builds the heap if it hasn't been built yet.
 func (h *HeapFunc[T]) TakeMin() T {
 	return h.impl.takeMin()
 }
 
 func (h *heapImpl[T]) takeMin() T {
-	h.ensureBuilt()
 	if len(h.values) == 0 {
 		panic("heap: TakeMin called on empty heap")
 	}
@@ -145,22 +153,11 @@ func (h *heapImpl[T]) takeMin() T {
 
 // ChangeMin replaces the minimum value in the heap with the given value.
 // It panics if the heap is empty.
-//
-// The first call to ChangeMin builds the heap if it hasn't been built yet.
 func (h *Heap[T]) ChangeMin(v T) {
 	h.impl.changeMin(v)
 }
 
-// // ChangeMin replaces the minimum value in the heap with the given value.
-// // It panics if the heap is empty.
-// //
-// // The first call to ChangeMin builds the heap if it hasn't been built yet.
-// func (h *HeapFunc[T]) ChangeMin(v T) {
-// 	h.impl.changeMin(v)
-// }
-
 func (h *heapImpl[T]) changeMin(v T) {
-	h.ensureBuilt()
 	if len(h.values) == 0 {
 		panic("heap: ChangeMin called on empty heap")
 	}
@@ -168,32 +165,11 @@ func (h *heapImpl[T]) changeMin(v T) {
 	h.mover.down(0)
 }
 
-// Build rebuilds the heap in O(n) time.
-// Call this after inserting multiple elements to avoid the cost of building
-// the heap on the first call to Min or TakeMin.
-func (h *Heap[T]) Build() {
-	h.impl.build()
-}
-
-// Build rebuilds the heap in O(n) time.
-// Call this after inserting multiple elements to avoid the cost of building
-// the heap on the first call to Min or TakeMin.
-func (h *HeapFunc[T]) Build() {
-	h.impl.build()
-}
-
-func (h *heapImpl[T]) ensureBuilt() {
-	if !h.built {
-		h.build()
-	}
-}
-
 func (h *heapImpl[T]) build() {
 	n := len(h.values)
 	for i := n/2 - 1; i >= 0; i-- {
 		h.mover.down(i)
 	}
-	h.built = true
 }
 
 // Clear removes all elements from the heap.
@@ -220,7 +196,6 @@ func (h *heapImpl[T]) clear() {
 		}
 		h.indexes = h.indexes[:0]
 	}
-	h.built = false
 }
 
 // Len returns the number of elements in the heap.
@@ -329,8 +304,6 @@ func (h *heapImpl[T]) deleteAt(i int) {
 // Call this method after modifying the value of the item.
 // If the item has been deleted or the heap has been cleared, Changed does nothing.
 //
-// Changed builds the heap if unbuilt.
-//
 // The HeapFunc must have an index function.
 func (h *HeapFunc[T]) Changed(v T) {
 	h.impl.changed(v)
@@ -348,7 +321,6 @@ func (h *heapImpl[T]) changed(v T) {
 	if h.indexes[*ip] != ip {
 		panic("heap: Changed: index pointer mismatch")
 	}
-	h.ensureBuilt()
 	if !h.mover.down(*ip) {
 		h.mover.up(*ip)
 	}

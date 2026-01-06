@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(go test:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(go build:*)"
     ],
     "deny": [],
     "ask": []

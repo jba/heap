@@ -9,13 +9,10 @@ import (
 func ExampleHeap() {
 	h := heap.New[int]()
 
-	// Insert elements
-	h.Insert(5)
-	h.Insert(3)
-	h.Insert(7)
-	h.Insert(1)
+	// Insert elements.
+	h.InsertSlice([]int{5, 3, 7, 1})
 
-	// Extract elements in sorted order
+	// Extract elements in sorted order.
 	fmt.Println(h.TakeMin())
 	fmt.Println(h.TakeMin())
 	fmt.Println(h.TakeMin())
@@ -28,36 +25,16 @@ func ExampleHeap() {
 	// 7
 }
 
-func ExampleHeap_Build() {
-	h := heap.New[int]()
-
-	// Insert many elements
-	for _, v := range []int{5, 2, 8, 1, 9, 3, 7} {
-		h.Insert(v)
-	}
-
-	// Build the heap explicitly to avoid cost on first Min/ExtractMin
-	h.Build()
-
-	fmt.Println(h.Min())
-
-	// Output:
-	// 1
-}
-
 func ExampleHeapFunc() {
-	// Create a max-heap using a custom comparison function
+	// Create a max-heap using a custom comparison function.
 	h := heap.NewFunc(func(a, b int) int {
-		// Reverse the comparison for max-heap
+		// Reverse the comparison for max-heap.
 		return b - a
 	})
 
-	h.Insert(5)
-	h.Insert(3)
-	h.Insert(7)
-	h.Insert(1)
+	h.InsertSlice([]int{5, 3, 7, 1})
 
-	// Extract maximum values
+	// Extract maximum values.
 	fmt.Println(h.TakeMin()) // "Min" extracts the element that compares smallest
 	fmt.Println(h.TakeMin())
 
@@ -82,10 +59,7 @@ func ExampleHeapFunc_Delete() {
 	item3 := &intWithIndex{value: 7}
 	item4 := &intWithIndex{value: 1}
 
-	h.Insert(item1)
-	h.Insert(item2)
-	h.Insert(item3)
-	h.Insert(item4)
+	h.InsertSlice([]*intWithIndex{item1, item2, item3, item4})
 
 	// Delete specific items.
 	h.Delete(item1)
@@ -116,9 +90,7 @@ func ExampleHeapFunc_Changed() {
 	item2 := &intWithIndex{value: 3}
 	item3 := &intWithIndex{value: 7}
 
-	h.Insert(item1)
-	h.Insert(item2)
-	h.Insert(item3)
+	h.InsertSlice([]*intWithIndex{item1, item2, item3})
 
 	// Get the current min.
 	fmt.Println(h.Min().value)
@@ -175,11 +147,7 @@ func ExampleHeap_ChangeMin() {
 
 func ExampleHeap_All() {
 	h := heap.New[int]()
-
-	h.Insert(5)
-	h.Insert(3)
-	h.Insert(7)
-	h.Insert(1)
+	h.InsertSlice([]int{5, 3, 7, 1})
 
 	// Iterate over all elements.
 	sum := 0
