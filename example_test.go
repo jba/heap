@@ -145,6 +145,43 @@ func ExampleHeap_ChangeMin() {
 	// 10
 }
 
+// ExampleHeapFunc_ChangeMin demonstrates finding the K smallest elements
+// using a max-heap and ChangeMin.
+func ExampleHeapFunc_ChangeMin() {
+	// To find the K smallest elements, use a max-heap of size K.
+	// The heap's "min" (actually max) is the largest of the K smallest seen so far.
+	h := heap.NewFunc(func(a, b int) int {
+		return b - a // Reverse comparison for max-heap.
+	})
+
+	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
+	k := 3
+
+	// Insert first K elements.
+	for _, v := range data[:k] {
+		h.Insert(v)
+	}
+
+	// For remaining elements, replace the max if we find a smaller value.
+	for _, v := range data[k:] {
+		if v < h.Min() {
+			h.ChangeMin(v)
+		}
+	}
+
+	// Drain the heap to get the K smallest (in descending order).
+	fmt.Println("3 smallest elements:")
+	for v := range h.Drain() {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3 smallest elements:
+	// 3
+	// 2
+	// 1
+}
+
 func ExampleHeap_All() {
 	h := heap.New[int]()
 	h.InsertSlice([]int{5, 3, 7, 1})

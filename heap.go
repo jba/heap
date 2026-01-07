@@ -157,6 +157,12 @@ func (h *Heap[T]) ChangeMin(v T) {
 	h.impl.changeMin(v)
 }
 
+// ChangeMin replaces the minimum value in the heap with the given value.
+// It panics if the heap is empty.
+func (h *HeapFunc[T]) ChangeMin(v T) {
+	h.impl.changeMin(v)
+}
+
 func (h *heapImpl[T]) changeMin(v T) {
 	if len(h.values) == 0 {
 		panic("heap: ChangeMin called on empty heap")
