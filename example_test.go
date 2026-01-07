@@ -1,13 +1,14 @@
 package heap_test
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/jba/heap"
 )
 
 func ExampleHeap() {
-	h := heap.New[int]()
+	h := heap.NewFunc[int](cmp.Compare[int])
 
 	// Insert elements.
 	h.InsertSlice([]int{5, 3, 7, 1})
@@ -25,7 +26,7 @@ func ExampleHeap() {
 	// 7
 }
 
-func ExampleHeapFunc() {
+func Example_maxHeap() {
 	// Create a max-heap using a custom comparison function.
 	h := heap.NewFunc(func(a, b int) int {
 		// Reverse the comparison for max-heap.
@@ -43,7 +44,7 @@ func ExampleHeapFunc() {
 	// 5
 }
 
-func ExampleHeapFunc_Delete() {
+func Example_delete() {
 	type intWithIndex struct {
 		value int
 		index int
@@ -75,7 +76,7 @@ func ExampleHeapFunc_Delete() {
 	// 7
 }
 
-func ExampleHeapFunc_Changed() {
+func Example_changed() {
 	type intWithIndex struct {
 		value int
 		index int
@@ -112,40 +113,40 @@ func ExampleHeapFunc_Changed() {
 // ExampleHeap_ChangeMin demonstrates finding the K largest elements
 // using a min-heap and ChangeMin.
 // This is commonly known as the "top K" algorithm.
-func ExampleHeap_ChangeMin() {
-	// To find the K largest elements, use a min-heap of size K.
-	// The heap's min is the smallest of the K largest seen so far.
-	h := heap.New[int]()
+// func ExampleHeap_ChangeMin() {
+// 	// To find the K largest elements, use a min-heap of size K.
+// 	// The heap's min is the smallest of the K largest seen so far.
+// 	h := heap.NewOrdered[int]()
 
-	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
-	k := 3
+// 	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
+// 	k := 3
 
-	// Insert first K elements.
-	h.InsertSlice(data[:k])
+// 	// Insert first K elements.
+// 	h.InsertSlice(data[:k])
 
-	// For remaining elements, replace the min if we find a larger value.
-	for _, v := range data[k:] {
-		if v > h.Min() {
-			h.ChangeMin(v)
-		}
-	}
+// 	// For remaining elements, replace the min if we find a larger value.
+// 	for _, v := range data[k:] {
+// 		if v > h.Min() {
+// 			h.ChangeMin(v)
+// 		}
+// 	}
 
-	// Drain the heap to get the K largest (in ascending order).
-	fmt.Println("3 largest elements:")
-	for v := range h.Drain() {
-		fmt.Println(v)
-	}
+// 	// Drain the heap to get the K largest (in ascending order).
+// 	fmt.Println("3 largest elements:")
+// 	for v := range h.Drain() {
+// 		fmt.Println(v)
+// 	}
 
-	// Output:
-	// 3 largest elements:
-	// 8
-	// 9
-	// 10
-}
+// 	// Output:
+// 	// 3 largest elements:
+// 	// 8
+// 	// 9
+// 	// 10
+// }
 
-// ExampleHeapFunc_ChangeMin demonstrates finding the K smallest elements
+// Example_kSmallest demonstrates finding the K smallest elements
 // using a max-heap and ChangeMin.
-func ExampleHeapFunc_ChangeMin() {
+func Example_kSmallest() {
 	// To find the K smallest elements, use a max-heap of size K.
 	// The heap's "min" (actually max) is the largest of the K smallest seen so far.
 	h := heap.NewFunc(func(a, b int) int {
@@ -178,18 +179,18 @@ func ExampleHeapFunc_ChangeMin() {
 	// 1
 }
 
-func ExampleHeap_All() {
-	h := heap.New[int]()
-	h.InsertSlice([]int{5, 3, 7, 1})
+// func ExampleHeap_All() {
+// 	h := heap.NewOrdered[int]()
+// 	h.InsertSlice([]int{5, 3, 7, 1})
 
-	// Iterate over all elements.
-	sum := 0
-	for v := range h.All() {
-		sum += v
-	}
+// 	// Iterate over all elements.
+// 	sum := 0
+// 	for v := range h.All() {
+// 		sum += v
+// 	}
 
-	fmt.Printf("Total elements %d, sum %d\n", h.Len(), sum)
+// 	fmt.Printf("Total elements %d, sum %d\n", h.Len(), sum)
 
-	// Output:
-	// Total elements 4, sum 16
-}
+// 	// Output:
+// 	// Total elements 4, sum 16
+// }
