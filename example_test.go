@@ -121,9 +121,7 @@ func ExampleHeap_ChangeMin() {
 	k := 3
 
 	// Insert first K elements.
-	for _, v := range data[:k] {
-		h.Insert(v)
-	}
+	h.InsertSlice(data[:k])
 
 	// For remaining elements, replace the min if we find a larger value.
 	for _, v := range data[k:] {
@@ -158,9 +156,7 @@ func ExampleHeapFunc_ChangeMin() {
 	k := 3
 
 	// Insert first K elements.
-	for _, v := range data[:k] {
-		h.Insert(v)
-	}
+	h.InsertSlice(data[:k])
 
 	// For remaining elements, replace the max if we find a smaller value.
 	for _, v := range data[k:] {
