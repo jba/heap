@@ -11,8 +11,8 @@ type heapOrdered[T cmp.Ordered] struct {
 	impl heapImpl[T]
 }
 
-// heapFunc is a min-heap for any type with a custom comparison function.
-type heapFunc[T any] struct {
+// Heap is a min-heap for any type with a custom comparison function.
+type Heap[T any] struct {
 	impl    heapImpl[T]
 	compare func(T, T) int
 }
@@ -41,8 +41,8 @@ func NewOrdered[T cmp.Ordered]() *heapOrdered[T] {
 // NewFunc creates a new min-heap with a custom comparison function.
 // The comparison function should return a negative value if a < b,
 // zero if a == b, and a positive value if a > b.
-func NewFunc[T any](compare func(T, T) int) *heapFunc[T] {
-	h := &heapFunc[T]{compare: compare}
+func NewFunc[T any](compare func(T, T) int) *Heap[T] {
+	h := &Heap[T]{compare: compare}
 	h.impl.mover = h
 	return h
 }
@@ -55,7 +55,7 @@ func (h *heapOrdered[T]) SetIndexFunc(f func(T) *int) {
 
 // SetIndexFunc sets a function that returns a pointer to an index field
 // in the heap element.
-func (h *heapFunc[T]) SetIndexFunc(f func(T) *int) {
+func (h *Heap[T]) SetIndexFunc(f func(T) *int) {
 	h.impl.setIndexFunc(f)
 }
 
@@ -70,7 +70,7 @@ func (h *heapOrdered[T]) Insert(value T) {
 }
 
 // Insert adds an element to the heap.
-func (h *heapFunc[T]) Insert(value T) {
+func (h *Heap[T]) Insert(value T) {
 	h.impl.insert(value)
 }
 
@@ -92,7 +92,7 @@ func (h *heapOrdered[T]) InsertSlice(s []T) {
 
 // InsertSlice adds all elements of s to the heap, then heapifies.
 // The caller must not subsequently modify s.
-func (h *heapFunc[T]) InsertSlice(s []T) {
+func (h *Heap[T]) InsertSlice(s []T) {
 	h.impl.insertSlice(s)
 }
 
@@ -121,7 +121,7 @@ func (h *heapOrdered[T]) Min() T {
 
 // Min returns the minimum element in the heap without removing it.
 // It panics if the heap is empty.
-func (h *heapFunc[T]) Min() T {
+func (h *Heap[T]) Min() T {
 	return h.impl.min()
 }
 
@@ -140,7 +140,7 @@ func (h *heapOrdered[T]) TakeMin() T {
 
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
-func (h *heapFunc[T]) TakeMin() T {
+func (h *Heap[T]) TakeMin() T {
 	return h.impl.takeMin()
 }
 
@@ -161,7 +161,7 @@ func (h *heapOrdered[T]) ChangeMin(v T) {
 
 // ChangeMin replaces the minimum value in the heap with the given value.
 // It panics if the heap is empty.
-func (h *heapFunc[T]) ChangeMin(v T) {
+func (h *Heap[T]) ChangeMin(v T) {
 	h.impl.changeMin(v)
 }
 
@@ -186,7 +186,7 @@ func (h *heapOrdered[T]) Clear() {
 }
 
 // Clear removes all elements from the heap.
-func (h *heapFunc[T]) Clear() {
+func (h *Heap[T]) Clear() {
 	h.impl.clear()
 }
 
@@ -211,7 +211,7 @@ func (h *heapOrdered[T]) Len() int {
 }
 
 // Len returns the number of elements in the heap.
-func (h *heapFunc[T]) Len() int {
+func (h *Heap[T]) Len() int {
 	return len(h.impl.values)
 }
 
@@ -223,7 +223,7 @@ func (h *heapOrdered[T]) All() iter.Seq[T] {
 
 // All returns an iterator over all elements in the heap
 // in unspecified order.
-func (h *heapFunc[T]) All() iter.Seq[T] {
+func (h *Heap[T]) All() iter.Seq[T] {
 	return h.impl.all()
 }
 
@@ -249,7 +249,7 @@ func (h *heapOrdered[T]) Drain() iter.Seq[T] {
 // from smallest to largest.
 //
 // The result is undefined if the heap is changed during iteration.
-func (h *heapFunc[T]) Drain() iter.Seq[T] {
+func (h *Heap[T]) Drain() iter.Seq[T] {
 	return h.impl.drain()
 }
 
@@ -277,7 +277,7 @@ func (h *heapOrdered[T]) Delete(v T) {
 // Delete does nothing.
 //
 // The Heap must have an index function.
-func (h *heapFunc[T]) Delete(v T) {
+func (h *Heap[T]) Delete(v T) {
 	h.impl.delete(v)
 }
 
@@ -330,7 +330,7 @@ func (h *heapOrdered[T]) Changed(v T) {
 // If the item has been deleted or the heap has been cleared, Changed does nothing.
 //
 // The Heap must have an index function.
-func (h *heapFunc[T]) Changed(v T) {
+func (h *Heap[T]) Changed(v T) {
 	h.impl.changed(v)
 }
 
@@ -364,7 +364,7 @@ func (h *heapOrdered[T]) up(i int) {
 }
 
 // up moves the element at index i up the heap until the heap invariant is restored.
-func (h *heapFunc[T]) up(i int) {
+func (h *Heap[T]) up(i int) {
 	for i > 0 {
 		p := (i - 1) / 2 // parent
 		if h.compare(h.impl.values[i], h.impl.values[p]) >= 0 {
@@ -400,7 +400,7 @@ func (h *heapOrdered[T]) down(i int) bool {
 
 // down moves the element at index i down the heap until the heap invariant is restored.
 // Returns true if the element moved.
-func (h *heapFunc[T]) down(i int) bool {
+func (h *Heap[T]) down(i int) bool {
 	n := len(h.impl.values)
 	i0 := i
 	for {
