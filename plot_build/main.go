@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"math/rand"
 	"os"
@@ -40,7 +41,7 @@ func main() {
 			}
 
 			// Time the InsertSlice operation (which includes heapify)
-			h := heap.NewOrdered[int]()
+			h := heap.NewFunc(cmp.Compare[int])
 			start := time.Now()
 			h.InsertSlice(data)
 			elapsed := time.Since(start)

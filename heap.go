@@ -2,7 +2,6 @@
 package heap
 
 import (
-	"cmp"
 	"iter"
 )
 
@@ -24,11 +23,6 @@ type heapImpl[T any] struct {
 type mover interface {
 	up(i int)
 	down(i int) bool
-}
-
-// NewOrdered creates a new min-heap for ordered types.
-func NewOrdered[T cmp.Ordered]() *Heap[T] {
-	return NewFunc(cmp.Compare[T])
 }
 
 // NewFunc creates a new min-heap with a custom comparison function.
