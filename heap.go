@@ -121,6 +121,8 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 
 // Delete removes the element at index i from the heap.
 // If i is out of range, Delete does nothing.
+// The only reasonable values for i are 0, for the minimum element,
+// or an index maintained by an index function (see [Heap.SetIndexFunction]).
 func (h *Heap[T]) Delete(i int) {
 	if i < 0 || i >= len(h.values) {
 		return
@@ -146,6 +148,9 @@ func (h *Heap[T]) delete(i int) {
 
 // Changed restores the heap invariant after the element at index i has been modified.
 // If i is out of range, Changed does nothing.
+// The only reasonable values for i are 0, for the minimum element,
+// (but see [Heap.ChangeMin] for an alternative)
+// or an index maintained by an index function (see [Heap.SetIndexFunction]).
 func (h *Heap[T]) Changed(i int) {
 	if i < 0 || i >= len(h.values) {
 		return
@@ -153,6 +158,16 @@ func (h *Heap[T]) Changed(i int) {
 	if !h.down(i) {
 		h.up(i)
 	}
+}
+
+// ChangeMin replaces the minimum value in the heap with the given value.
+// It panics if the heap is empty.
+func (h *Heap[T]) ChangeMin(v T) {
+	if len(h.values) == 0 {
+		panic("heap: ChangeMin called on empty heap")
+	}
+	h.values[0] = v
+	h.down(0)
 }
 
 // up moves the element at index i up the heap until the heap invariant is restored.

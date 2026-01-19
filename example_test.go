@@ -125,3 +125,37 @@ func ExampleHeap_All() {
 	// Output:
 	// Total elements 4, sum 16
 }
+
+// ExampleHeap_ChangeMin demonstrates finding the K largest elements
+// using a min-heap and ChangeMin.
+// This is commonly known as the "top K" algorithm.
+func ExampleHeap_topK() {
+	// To find the K largest elements, use a min-heap of size K.
+	// The heap's min is the smallest of the K largest seen so far.
+	h := heap.New(cmp.Compare[int])
+
+	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
+	k := 3
+
+	// Insert first K elements.
+	h.InsertSlice(data[:k])
+
+	// For remaining elements, replace the min if we find a larger value.
+	for _, v := range data[k:] {
+		if v > h.Min() {
+			h.ChangeMin(v)
+		}
+	}
+
+	// Drain the heap to get the K largest (in ascending order).
+	fmt.Println("3 largest elements:")
+	for v := range h.Drain() {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3 largest elements:
+	// 8
+	// 9
+	// 10
+}
