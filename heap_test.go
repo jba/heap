@@ -106,7 +106,7 @@ func TestItemDelete(t *testing.T) {
 	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
-	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 	items := []*intIndexed{
 		{value: 1},
 		{value: 3},
@@ -119,8 +119,8 @@ func TestItemDelete(t *testing.T) {
 		t.Fatalf("heap should have 4 elements, got %d", h.Len())
 	}
 
-	// Delete the middle element
-	h.Delete(items[1])
+	// Delete the middle element (value 3)
+	h.Delete(items[1].index)
 	if h.Len() != 3 {
 		t.Errorf("after Delete, heap should have 3 elements, got %d", h.Len())
 	}
@@ -136,9 +136,9 @@ func TestItemDelete(t *testing.T) {
 		t.Errorf("got = %v, want %v", got, want)
 	}
 
-	// Deleting already-deleted or existing items should be safe.
+	// Deleting already-deleted items (index -1) should be safe.
 	for _, i := range items {
-		h.Delete(i)
+		h.Delete(i.index)
 	}
 
 	if g := h.Len(); g != 0 {
@@ -150,7 +150,7 @@ func TestItemAdjust(t *testing.T) {
 	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
-	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 
 	items := []*intIndexed{
 		{value: 5},
@@ -165,7 +165,7 @@ func TestItemAdjust(t *testing.T) {
 
 	// Modify the item (originally value 1) to 8.
 	itemToModify.value = 8
-	h.Changed(itemToModify)
+	h.Changed(itemToModify.index)
 
 	// Extract all elements - should still be in sorted order.
 	var got []int
@@ -183,7 +183,7 @@ func TestClear(t *testing.T) {
 	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
-	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 
 	items := []*intIndexed{
 		{value: 5},
@@ -208,9 +208,9 @@ func TestClear(t *testing.T) {
 		}
 	}
 
-	// Operations on items from cleared heap should be safe.
-	h.Delete(items[0])
-	h.Changed(items[1])
+	// Operations on items from cleared heap should be safe (index is -1).
+	h.Delete(items[0].index)
+	h.Changed(items[1].index)
 }
 
 func TestAll(t *testing.T) {
@@ -327,7 +327,7 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
-	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 
 	items := make([]*intIndexed, 100)
 	for i := range items {
@@ -337,7 +337,7 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 
 	// Verify Delete requires no allocation.
 	allocs := testing.AllocsPerRun(5, func() {
-		h.Delete(items[50])
+		h.Delete(items[50].index)
 		// Re-insert so we can delete again.
 		items[50].value = 50
 		h.Insert(items[50])
@@ -349,9 +349,9 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 	// Verify Changed requires no allocation.
 	allocs = testing.AllocsPerRun(5, func() {
 		items[25].value = 1000
-		h.Changed(items[25])
+		h.Changed(items[25].index)
 		items[25].value = 25
-		h.Changed(items[25])
+		h.Changed(items[25].index)
 	})
 	if allocs != 0 {
 		t.Errorf("Changed: got %v allocs, want 0", allocs)
@@ -420,7 +420,7 @@ func TestInsertSlice(t *testing.T) {
 		h := New(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		})
-		h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+		h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 
 		items := []*intIndexed{
 			{value: 7},
@@ -439,7 +439,7 @@ func TestInsertSlice(t *testing.T) {
 		}
 
 		// Delete an item to verify indexes work.
-		h.Delete(items[1]) // value 2
+		h.Delete(items[1].index) // value 2
 
 		var got []int
 		for v := range h.Drain() {
@@ -455,7 +455,7 @@ func TestInsertSlice(t *testing.T) {
 		h := New(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		})
-		h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
+		h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
 
 		// Insert initial items.
 		initial := []*intIndexed{{value: 10}, {value: 20}}

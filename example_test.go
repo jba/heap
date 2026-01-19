@@ -53,7 +53,7 @@ func Example_delete() {
 	h := heap.New(func(a, b *intWithIndex) int {
 		return a.value - b.value
 	})
-	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
+	h.SetIndexFunc(func(v *intWithIndex, i int) { v.index = i })
 
 	item1 := &intWithIndex{value: 5}
 	item2 := &intWithIndex{value: 3}
@@ -62,9 +62,9 @@ func Example_delete() {
 
 	h.InsertSlice([]*intWithIndex{item1, item2, item3, item4})
 
-	// Delete specific items.
-	h.Delete(item1)
-	h.Delete(item2)
+	// Delete specific items by their index.
+	h.Delete(item1.index)
+	h.Delete(item2.index)
 
 	// Remaining elements.
 	for v := range h.Drain() {
@@ -85,7 +85,7 @@ func Example_changed() {
 	h := heap.New(func(a, b *intWithIndex) int {
 		return a.value - b.value
 	})
-	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
+	h.SetIndexFunc(func(v *intWithIndex, i int) { v.index = i })
 
 	item1 := &intWithIndex{value: 5}
 	item2 := &intWithIndex{value: 3}
@@ -100,7 +100,7 @@ func Example_changed() {
 	item1.value = 1
 
 	// Call Changed to restore heap invariant.
-	h.Changed(item1)
+	h.Changed(item1.index)
 
 	// Now item1 should be the new minimum.
 	fmt.Println(h.Min().value)

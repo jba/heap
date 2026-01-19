@@ -5,10 +5,9 @@ import "iter"
 
 // Heap is a min-heap.
 type Heap[T any] struct {
-	values    []T
-	indexes   []*int // from calls to indexFunc; updated in swap
-	indexFunc func(T) *int
-	compare   func(T, T) int
+	values   []T
+	setIndex func(T, int)
+	compare  func(T, T) int
 }
 
 // New creates a new min-heap with a comparison function.
@@ -18,20 +17,19 @@ func New[T any](compare func(T, T) int) *Heap[T] {
 	return &Heap[T]{compare: compare}
 }
 
-// SetIndexFunc sets a function that returns a pointer to an index field
-// in the heap element.
-func (h *Heap[T]) SetIndexFunc(f func(T) *int) {
-	h.indexFunc = f
-	h.indexes = make([]*int, len(h.values))
+// SetIndexFunc sets a function that sets the index of a heap element.
+// It should be called before any other function on the heap.
+// A Heap with an index function supports the Delete and Changed methods.
+// In a Heap with an index function, all the elements must be distinct.
+func (h *Heap[T]) SetIndexFunc(f func(T, int)) {
+	h.setIndex = f
 }
 
 // Insert adds an element to the heap.
 func (h *Heap[T]) Insert(value T) {
 	h.values = append(h.values, value)
-	if h.indexes != nil {
-		p := h.indexFunc(value)
-		*p = len(h.indexes)
-		h.indexes = append(h.indexes, p)
+	if h.setIndex != nil {
+		h.setIndex(value, len(h.values)-1)
 	}
 	h.up(len(h.values) - 1)
 }
@@ -39,20 +37,21 @@ func (h *Heap[T]) Insert(value T) {
 // InsertSlice adds all elements of s to the heap, then heapifies.
 // The caller must not subsequently modify s.
 func (h *Heap[T]) InsertSlice(s []T) {
-	if len(h.values) == 0 {
+	start := len(h.values)
+	if start == 0 {
 		h.values = s
 	} else {
 		h.values = append(h.values, s...)
 	}
-	if h.indexFunc != nil {
-		start := len(h.indexes)
+	if h.setIndex != nil {
 		for i, v := range s {
-			p := h.indexFunc(v)
-			*p = start + i
-			h.indexes = append(h.indexes, p)
+			h.setIndex(v, start+i)
 		}
 	}
-	h.build()
+	// heapify
+	for i := len(h.values)/2 - 1; i >= 0; i-- {
+		h.down(i)
+	}
 }
 
 // Min returns the minimum element in the heap without removing it.
@@ -71,31 +70,22 @@ func (h *Heap[T]) TakeMin() T {
 		panic("heap: TakeMin called on empty heap")
 	}
 	min := h.values[0]
-	h.deleteAt(0)
+	h.delete(0)
 	return min
-}
-
-func (h *Heap[T]) build() {
-	n := len(h.values)
-	for i := n/2 - 1; i >= 0; i-- {
-		h.down(i)
-	}
 }
 
 // Clear removes all elements from the heap.
 func (h *Heap[T]) Clear() {
+	if h.setIndex != nil {
+		for _, v := range h.values {
+			h.setIndex(v, -1)
+		}
+	}
 	var zero T
 	for i := range h.values {
 		h.values[i] = zero // allow GC
 	}
 	h.values = h.values[:0]
-	if h.indexes != nil {
-		for i := range h.indexes {
-			*h.indexes[i] = -1
-			h.indexes[i] = nil // allow GC
-		}
-		h.indexes = h.indexes[:0]
-	}
 }
 
 // Len returns the number of elements in the heap.
@@ -129,29 +119,18 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 	}
 }
 
-// Delete removes the item from the heap.
-// If the item has already been deleted or the heap has been cleared,
-// Delete does nothing.
-//
-// The Heap must have an index function.
-func (h *Heap[T]) Delete(v T) {
-	if h.indexFunc == nil {
-		panic("heap: Delete: SetIndexFunc was not called")
-	}
-	pi := h.indexFunc(v)
-	if *pi < 0 || *pi >= len(h.values) {
+// Delete removes the element at index i from the heap.
+// If i is out of range, Delete does nothing.
+func (h *Heap[T]) Delete(i int) {
+	if i < 0 || i >= len(h.values) {
 		return
 	}
-	// Sanity check: the entry at v's index should point to the same place.
-	if h.indexes[*pi] != pi {
-		panic("heap: Delete: index pointer mismatch")
-	}
-	h.deleteAt(*pi)
+	h.delete(i)
 }
 
-func (h *Heap[T]) deleteAt(i int) {
-	if h.indexes != nil {
-		*h.indexes[i] = -1
+func (h *Heap[T]) delete(i int) {
+	if h.setIndex != nil {
+		h.setIndex(h.values[i], -1)
 	}
 	n := len(h.values) - 1
 	if n != i {
@@ -160,34 +139,19 @@ func (h *Heap[T]) deleteAt(i int) {
 	var zero T
 	h.values[n] = zero // allow GC
 	h.values = h.values[:n]
-	if h.indexes != nil {
-		h.indexes[n] = nil // allow GC
-		h.indexes = h.indexes[:n]
-	}
 	if n != i && !h.down(i) {
 		h.up(i)
 	}
 }
 
-// Changed restores the heap invariant after the item's value has been changed.
-// Call this method after modifying the value of the item.
-// If the item has been deleted or the heap has been cleared, Changed does nothing.
-//
-// The Heap must have an index function.
-func (h *Heap[T]) Changed(v T) {
-	if h.indexFunc == nil {
-		panic("heap: Changed: no index function")
-	}
-	ip := h.indexFunc(v)
-	if *ip < 0 || *ip >= len(h.values) {
+// Changed restores the heap invariant after the element at index i has been modified.
+// If i is out of range, Changed does nothing.
+func (h *Heap[T]) Changed(i int) {
+	if i < 0 || i >= len(h.values) {
 		return
 	}
-	// Sanity check: the entry at v's index should point to the same place.
-	if h.indexes[*ip] != ip {
-		panic("heap: Changed: index pointer mismatch")
-	}
-	if !h.down(*ip) {
-		h.up(*ip)
+	if !h.down(i) {
+		h.up(i)
 	}
 }
 
@@ -228,9 +192,8 @@ func (h *Heap[T]) down(i int) bool {
 
 func (h *Heap[T]) swap(i, j int) {
 	h.values[i], h.values[j] = h.values[j], h.values[i]
-	if h.indexes != nil {
-		h.indexes[i], h.indexes[j] = h.indexes[j], h.indexes[i]
-		*h.indexes[i] = i
-		*h.indexes[j] = j
+	if h.setIndex != nil {
+		h.setIndex(h.values[i], i)
+		h.setIndex(h.values[j], j)
 	}
 }
