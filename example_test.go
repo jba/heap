@@ -7,8 +7,8 @@ import (
 	"github.com/jba/heap"
 )
 
-func ExampleNewFunc() {
-	h := heap.NewFunc[int](cmp.Compare[int])
+func ExampleNew() {
+	h := heap.New[int](cmp.Compare[int])
 
 	// Insert elements.
 	h.InsertSlice([]int{5, 3, 7, 1})
@@ -28,7 +28,7 @@ func ExampleNewFunc() {
 
 func Example_maxHeap() {
 	// Create a max-heap using a custom comparison function.
-	h := heap.NewFunc(func(a, b int) int {
+	h := heap.New(func(a, b int) int {
 		// Reverse the comparison for max-heap.
 		return b - a
 	})
@@ -50,7 +50,7 @@ func Example_delete() {
 		index int
 	}
 
-	h := heap.NewFunc(func(a, b *intWithIndex) int {
+	h := heap.New(func(a, b *intWithIndex) int {
 		return a.value - b.value
 	})
 	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
@@ -82,7 +82,7 @@ func Example_changed() {
 		index int
 	}
 
-	h := heap.NewFunc(func(a, b *intWithIndex) int {
+	h := heap.New(func(a, b *intWithIndex) int {
 		return a.value - b.value
 	})
 	h.SetIndexFunc(func(v *intWithIndex) *int { return &v.index })
@@ -149,7 +149,7 @@ func Example_changed() {
 func Example_kSmallest() {
 	// To find the K smallest elements, use a max-heap of size K.
 	// The heap's "min" (actually max) is the largest of the K smallest seen so far.
-	h := heap.NewFunc(func(a, b int) int {
+	h := heap.New(func(a, b int) int {
 		return b - a // Reverse comparison for max-heap.
 	})
 

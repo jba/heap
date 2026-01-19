@@ -35,7 +35,7 @@ func main() {
 
 		for t := 0; t < trials; t++ {
 			// Build heap of size n
-			h := heap.NewFunc(cmp.Compare[int])
+			h := heap.New(cmp.Compare[int])
 			for i := 0; i < n; i++ {
 				h.Insert(rand.Int())
 			}

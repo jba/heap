@@ -25,10 +25,10 @@ type mover interface {
 	down(i int) bool
 }
 
-// NewFunc creates a new min-heap with a custom comparison function.
+// New creates a new min-heap with a custom comparison function.
 // The comparison function should return a negative value if a < b,
 // zero if a == b, and a positive value if a > b.
-func NewFunc[T any](compare func(T, T) int) *Heap[T] {
+func New[T any](compare func(T, T) int) *Heap[T] {
 	h := &Heap[T]{compare: compare}
 	h.impl.mover = h
 	return h

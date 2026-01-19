@@ -7,7 +7,7 @@ import (
 )
 
 func TestHeapBasicOperations(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 
 	// Test empty heap
 	if h.Len() != 0 {
@@ -58,7 +58,7 @@ func TestHeapBasicOperations(t *testing.T) {
 }
 
 func TestHeapBuild(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 	h.InsertSlice([]int{5, 2, 8, 1, 9, 3, 7})
 
 	// Extract all elements - should come out in sorted order
@@ -72,7 +72,7 @@ func TestHeapBuild(t *testing.T) {
 
 func TestHeapFunc(t *testing.T) {
 	// Create a max-heap by reversing the comparison
-	h := NewFunc(func(a, b int) int {
+	h := New(func(a, b int) int {
 		if a > b {
 			return -1
 		} else if a < b {
@@ -103,7 +103,7 @@ type intIndexed struct {
 }
 
 func TestItemDelete(t *testing.T) {
-	h := NewFunc(func(a, b *intIndexed) int {
+	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
 	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
@@ -147,7 +147,7 @@ func TestItemDelete(t *testing.T) {
 }
 
 func TestItemAdjust(t *testing.T) {
-	h := NewFunc(func(a, b *intIndexed) int {
+	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
 	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
@@ -180,7 +180,7 @@ func TestItemAdjust(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	h := NewFunc(func(a, b *intIndexed) int {
+	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
 	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
@@ -214,7 +214,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 	h.InsertSlice([]int{5, 2, 8, 1, 9})
 
 	// Collect all elements
@@ -236,7 +236,7 @@ func TestAll(t *testing.T) {
 }
 
 func TestAllEarlyBreak(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 
 	for i := range 10 {
 		h.Insert(i)
@@ -262,7 +262,7 @@ func TestAllEarlyBreak(t *testing.T) {
 }
 
 func TestPanicOnEmptyHeap(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -274,7 +274,7 @@ func TestPanicOnEmptyHeap(t *testing.T) {
 }
 
 func TestPanicOnEmptyExtractMin(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -286,7 +286,7 @@ func TestPanicOnEmptyExtractMin(t *testing.T) {
 }
 
 func TestHeapWithStrings(t *testing.T) {
-	h := NewFunc(cmp.Compare[string])
+	h := New(cmp.Compare[string])
 	h.InsertSlice([]string{"dog", "cat", "bird", "ant"})
 
 	if min := h.Min(); min != "ant" {
@@ -302,7 +302,7 @@ func TestHeapWithStrings(t *testing.T) {
 }
 
 func TestLargeHeap(t *testing.T) {
-	h := NewFunc(cmp.Compare[int])
+	h := New(cmp.Compare[int])
 
 	// Insert 1000 elements in reverse order
 	for i := 1000; i > 0; i-- {
@@ -324,7 +324,7 @@ func TestLargeHeap(t *testing.T) {
 }
 
 func TestIndexFuncNoAllocs(t *testing.T) {
-	h := NewFunc(func(a, b *intIndexed) int {
+	h := New(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
 	})
 	h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
@@ -360,7 +360,7 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 
 func TestInsertSlice(t *testing.T) {
 	t.Run("Heap", func(t *testing.T) {
-		h := NewFunc(cmp.Compare[int])
+		h := New(cmp.Compare[int])
 		data := []int{7, 2, 9, 1, 5}
 		h.InsertSlice(data)
 
@@ -372,7 +372,7 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("Heap takes ownership", func(t *testing.T) {
-		h := NewFunc(cmp.Compare[int])
+		h := New(cmp.Compare[int])
 		data := []int{7, 2, 9, 1, 5}
 		h.InsertSlice(data)
 
@@ -391,7 +391,7 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("Heap appends to existing", func(t *testing.T) {
-		h := NewFunc(cmp.Compare[int])
+		h := New(cmp.Compare[int])
 		h.Insert(10)
 		h.Insert(20)
 
@@ -405,7 +405,7 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("HeapFunc without indexFunc", func(t *testing.T) {
-		h := NewFunc(func(a, b int) int { return cmp.Compare(a, b) })
+		h := New(func(a, b int) int { return cmp.Compare(a, b) })
 		data := []int{7, 2, 9, 1, 5}
 		h.InsertSlice(data)
 
@@ -417,7 +417,7 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("HeapFunc with indexFunc", func(t *testing.T) {
-		h := NewFunc(func(a, b *intIndexed) int {
+		h := New(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		})
 		h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })
@@ -452,7 +452,7 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("HeapFunc with indexFunc appends to existing", func(t *testing.T) {
-		h := NewFunc(func(a, b *intIndexed) int {
+		h := New(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		})
 		h.SetIndexFunc(func(v *intIndexed) *int { return &v.index })

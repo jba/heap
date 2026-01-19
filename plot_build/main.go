@@ -41,7 +41,7 @@ func main() {
 			}
 
 			// Time the InsertSlice operation (which includes heapify)
-			h := heap.NewFunc(cmp.Compare[int])
+			h := heap.New(cmp.Compare[int])
 			start := time.Now()
 			h.InsertSlice(data)
 			elapsed := time.Since(start)
