@@ -14,7 +14,7 @@ func BenchmarkInsert(b *testing.B) {
 
 	b.Run("Insert", func(b *testing.B) {
 		for b.Loop() {
-			h := newOrdered[int]()
+			h := New(cmp.Compare[int])
 			for _, n := range nums {
 				h.Insert(n)
 			}
@@ -45,7 +45,7 @@ func BenchmarkHeapVsHeapFunc(b *testing.B) {
 
 	b.Run("Heap", func(b *testing.B) {
 		for b.Loop() {
-			h := newOrdered[int]()
+			h := New(cmp.Compare[int])
 			for _, n := range nums {
 				h.Insert(n)
 			}
@@ -57,7 +57,7 @@ func BenchmarkHeapVsHeapFunc(b *testing.B) {
 
 	b.Run("HeapFunc", func(b *testing.B) {
 		for b.Loop() {
-			h := NewFunc(cmp.Compare[int])
+			h := New(cmp.Compare[int])
 			for _, n := range nums {
 				h.Insert(n)
 			}
