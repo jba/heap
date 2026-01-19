@@ -7,7 +7,7 @@ import (
 	"github.com/jba/heap"
 )
 
-func ExampleHeap() {
+func ExampleNewFunc() {
 	h := heap.NewFunc[int](cmp.Compare[int])
 
 	// Insert elements.

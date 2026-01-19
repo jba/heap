@@ -6,57 +6,6 @@ import (
 	"iter"
 )
 
-// A Heap is a binary min-heap.
-type Heap[T any] interface {
-	// Insert adds an element to the heap, preserving the heap property.
-	Insert(value T)
-	// InsertSlice adds all elements of s to the heap, then re-establishes
-	// the heap property.
-	// The caller must not subsequently modify s.
-	InsertSlice(s []T)
-	// Min returns the minimum element in the heap without removing it.
-	// It panics if the heap is empty.
-	Min() T
-	// TakeMin removes and returns the minimum element from the heap.
-	// It panics if the heap is empty.
-	TakeMin() T
-	// ChangeMin replaces the minimum value in the heap with the given value.
-	// It panics if the heap is empty.
-	ChangeMin(v T)
-	// Len returns the number of elements in the heap.
-	Len() int
-	// All returns an iterator over all elements in the heap
-	// in unspecified order.
-	All() iter.Seq[T]
-	// Drain removes and returns the heap elements in sorted order,
-	// from smallest to largest.
-	//
-	// The result is undefined if the heap is changed during iteration.
-	Drain() iter.Seq[T]
-	// Clear removes all elements from the heap.
-	Clear()
-
-	// SetIndexFunc sets a function that returns a pointer index for
-	// the given heap element. The index function must not return nil.
-	//
-	// SetIndexFunc enables the use of the Delete and Changed methods.
-	// It must be called initially, before any other method is called.
-	SetIndexFunc(f func(T) *int)
-	// Changed restores the heap invariant after the item's value
-	// has been changed. Call this method after modifying the value
-	// of the item. If the item has been deleted or the heap has been
-	// cleared, Changed does nothing.
-	//
-	// The Heap must have an index function.
-	Changed(v T)
-	// Delete removes the item with the given index from the heap.
-	// If the item has already been deleted or the heap has been cleared,
-	// Delete does nothing.
-	//
-	// The Heap must have an index function.
-	Delete(v T)
-}
-
 // heapOrdered is a min-heap for ordered types.
 type heapOrdered[T cmp.Ordered] struct {
 	impl heapImpl[T]
@@ -82,8 +31,8 @@ type mover interface {
 	down(i int) bool
 }
 
-// newOrdered creates a new min-heap for ordered types.
-func newOrdered[T cmp.Ordered]() Heap[T] {
+// NewOrdered creates a new min-heap for ordered types.
+func NewOrdered[T cmp.Ordered]() *heapOrdered[T] {
 	h := &heapOrdered[T]{}
 	h.impl.mover = h
 	return h
@@ -92,7 +41,7 @@ func newOrdered[T cmp.Ordered]() Heap[T] {
 // NewFunc creates a new min-heap with a custom comparison function.
 // The comparison function should return a negative value if a < b,
 // zero if a == b, and a positive value if a > b.
-func NewFunc[T any](compare func(T, T) int) Heap[T] {
+func NewFunc[T any](compare func(T, T) int) *heapFunc[T] {
 	h := &heapFunc[T]{compare: compare}
 	h.impl.mover = h
 	return h
