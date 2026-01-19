@@ -7,7 +7,7 @@ import (
 	"github.com/jba/heap"
 )
 
-func ExampleNew() {
+func ExampleHeap() {
 	h := heap.New[int](cmp.Compare[int])
 
 	// Insert elements.
@@ -110,87 +110,18 @@ func Example_changed() {
 	// 1
 }
 
-// ExampleHeap_ChangeMin demonstrates finding the K largest elements
-// using a min-heap and ChangeMin.
-// This is commonly known as the "top K" algorithm.
-// func ExampleHeap_ChangeMin() {
-// 	// To find the K largest elements, use a min-heap of size K.
-// 	// The heap's min is the smallest of the K largest seen so far.
-// 	h := heap.NewOrdered[int]()
+func ExampleHeap_All() {
+	h := heap.New(cmp.Compare[int])
+	h.InsertSlice([]int{5, 3, 7, 1})
 
-// 	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
-// 	k := 3
-
-// 	// Insert first K elements.
-// 	h.InsertSlice(data[:k])
-
-// 	// For remaining elements, replace the min if we find a larger value.
-// 	for _, v := range data[k:] {
-// 		if v > h.Min() {
-// 			h.ChangeMin(v)
-// 		}
-// 	}
-
-// 	// Drain the heap to get the K largest (in ascending order).
-// 	fmt.Println("3 largest elements:")
-// 	for v := range h.Drain() {
-// 		fmt.Println(v)
-// 	}
-
-// 	// Output:
-// 	// 3 largest elements:
-// 	// 8
-// 	// 9
-// 	// 10
-// }
-
-// Example_kSmallest demonstrates finding the K smallest elements
-// using a max-heap and ChangeMin.
-func Example_kSmallest() {
-	// To find the K smallest elements, use a max-heap of size K.
-	// The heap's "min" (actually max) is the largest of the K smallest seen so far.
-	h := heap.New(func(a, b int) int {
-		return b - a // Reverse comparison for max-heap.
-	})
-
-	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
-	k := 3
-
-	// Insert first K elements.
-	h.InsertSlice(data[:k])
-
-	// For remaining elements, replace the max if we find a smaller value.
-	for _, v := range data[k:] {
-		if v < h.Min() {
-			h.ChangeMin(v)
-		}
+	// Iterate over all elements.
+	sum := 0
+	for v := range h.All() {
+		sum += v
 	}
 
-	// Drain the heap to get the K smallest (in descending order).
-	fmt.Println("3 smallest elements:")
-	for v := range h.Drain() {
-		fmt.Println(v)
-	}
+	fmt.Printf("Total elements %d, sum %d\n", h.Len(), sum)
 
 	// Output:
-	// 3 smallest elements:
-	// 3
-	// 2
-	// 1
+	// Total elements 4, sum 16
 }
-
-// func ExampleHeap_All() {
-// 	h := heap.NewOrdered[int]()
-// 	h.InsertSlice([]int{5, 3, 7, 1})
-
-// 	// Iterate over all elements.
-// 	sum := 0
-// 	for v := range h.All() {
-// 		sum += v
-// 	}
-
-// 	fmt.Printf("Total elements %d, sum %d\n", h.Len(), sum)
-
-// 	// Output:
-// 	// Total elements 4, sum 16
-// }

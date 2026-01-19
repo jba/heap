@@ -1,11 +1,9 @@
-// Package heap provides min-heap data structures.
+// Package heap provides a min-heap data structure.
 package heap
 
-import (
-	"iter"
-)
+import "iter"
 
-// Heap is a min-heap for any type with a custom comparison function.
+// Heap is a min-heap.
 type Heap[T any] struct {
 	values    []T
 	indexes   []*int // from calls to indexFunc; updated in swap
@@ -13,7 +11,7 @@ type Heap[T any] struct {
 	compare   func(T, T) int
 }
 
-// New creates a new min-heap with a custom comparison function.
+// New creates a new min-heap with a comparison function.
 // The comparison function should return a negative value if a < b,
 // zero if a == b, and a positive value if a > b.
 func New[T any](compare func(T, T) int) *Heap[T] {
@@ -41,7 +39,7 @@ func (h *Heap[T]) Insert(value T) {
 // InsertSlice adds all elements of s to the heap, then heapifies.
 // The caller must not subsequently modify s.
 func (h *Heap[T]) InsertSlice(s []T) {
-	if h.values == nil {
+	if len(h.values) == 0 {
 		h.values = s
 	} else {
 		h.values = append(h.values, s...)
@@ -60,10 +58,6 @@ func (h *Heap[T]) InsertSlice(s []T) {
 // Min returns the minimum element in the heap without removing it.
 // It panics if the heap is empty.
 func (h *Heap[T]) Min() T {
-	return h.min()
-}
-
-func (h *Heap[T]) min() T {
 	if len(h.values) == 0 {
 		panic("heap: Min called on empty heap")
 	}
@@ -73,30 +67,12 @@ func (h *Heap[T]) min() T {
 // TakeMin removes and returns the minimum element from the heap.
 // It panics if the heap is empty.
 func (h *Heap[T]) TakeMin() T {
-	return h.takeMin()
-}
-
-func (h *Heap[T]) takeMin() T {
 	if len(h.values) == 0 {
 		panic("heap: TakeMin called on empty heap")
 	}
 	min := h.values[0]
 	h.deleteAt(0)
 	return min
-}
-
-// ChangeMin replaces the minimum value in the heap with the given value.
-// It panics if the heap is empty.
-func (h *Heap[T]) ChangeMin(v T) {
-	h.changeMin(v)
-}
-
-func (h *Heap[T]) changeMin(v T) {
-	if len(h.values) == 0 {
-		panic("heap: ChangeMin called on empty heap")
-	}
-	h.values[0] = v
-	h.down(0)
 }
 
 func (h *Heap[T]) build() {
@@ -108,10 +84,6 @@ func (h *Heap[T]) build() {
 
 // Clear removes all elements from the heap.
 func (h *Heap[T]) Clear() {
-	h.clear()
-}
-
-func (h *Heap[T]) clear() {
 	var zero T
 	for i := range h.values {
 		h.values[i] = zero // allow GC
@@ -134,10 +106,6 @@ func (h *Heap[T]) Len() int {
 // All returns an iterator over all elements in the heap
 // in unspecified order.
 func (h *Heap[T]) All() iter.Seq[T] {
-	return h.all()
-}
-
-func (h *Heap[T]) all() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for _, v := range h.values {
 			if !yield(v) {
@@ -152,13 +120,9 @@ func (h *Heap[T]) all() iter.Seq[T] {
 //
 // The result is undefined if the heap is changed during iteration.
 func (h *Heap[T]) Drain() iter.Seq[T] {
-	return h.drain()
-}
-
-func (h *Heap[T]) drain() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for len(h.values) > 0 {
-			if !yield(h.takeMin()) {
+			if !yield(h.TakeMin()) {
 				return
 			}
 		}
@@ -171,10 +135,6 @@ func (h *Heap[T]) drain() iter.Seq[T] {
 //
 // The Heap must have an index function.
 func (h *Heap[T]) Delete(v T) {
-	h.delete(v)
-}
-
-func (h *Heap[T]) delete(v T) {
 	if h.indexFunc == nil {
 		panic("heap: Delete: SetIndexFunc was not called")
 	}
@@ -215,10 +175,6 @@ func (h *Heap[T]) deleteAt(i int) {
 //
 // The Heap must have an index function.
 func (h *Heap[T]) Changed(v T) {
-	h.changed(v)
-}
-
-func (h *Heap[T]) changed(v T) {
 	if h.indexFunc == nil {
 		panic("heap: Changed: no index function")
 	}
