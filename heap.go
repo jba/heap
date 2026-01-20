@@ -3,7 +3,7 @@ package heap
 
 import "iter"
 
-// Heap is a min-heap.
+// Heap is a binary min-heap.
 type Heap[T any] struct {
 	values   []T
 	setIndex func(T, int)
@@ -120,12 +120,16 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 }
 
 // Delete removes the element at index i from the heap.
-// If i is out of range, Delete does nothing.
 // The only reasonable values for i are 0, for the minimum element,
 // or an index maintained by an index function (see [Heap.SetIndexFunction]).
+// If i is out of range, or it is non-zero and there is no index function,
+// Delete panics.
 func (h *Heap[T]) Delete(i int) {
 	if i < 0 || i >= len(h.values) {
-		return
+		panic("heap: Delete: index out of range")
+	}
+	if i != 0 && h.setIndex == nil {
+		panic("heap: Delete called with non-zero index and no index function")
 	}
 	h.delete(i)
 }
@@ -147,13 +151,17 @@ func (h *Heap[T]) delete(i int) {
 }
 
 // Changed restores the heap invariant after the element at index i has been modified.
-// If i is out of range, Changed does nothing.
-// The only reasonable values for i are 0, for the minimum element,
+// The only reasonable values for i are 0, for the minimum element
 // (but see [Heap.ChangeMin] for an alternative)
 // or an index maintained by an index function (see [Heap.SetIndexFunction]).
+// If i is out of range, or it is non-zero and there is no index function,
+// Changed panics.
 func (h *Heap[T]) Changed(i int) {
 	if i < 0 || i >= len(h.values) {
-		return
+		panic("heap: Changed: index out of range")
+	}
+	if i != 0 && h.setIndex == nil {
+		panic("heap: Changed called with non-zero index and no index function")
 	}
 	if !h.down(i) {
 		h.up(i)

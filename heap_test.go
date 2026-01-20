@@ -135,15 +135,6 @@ func TestItemDelete(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("got = %v, want %v", got, want)
 	}
-
-	// Deleting already-deleted items (index -1) should be safe.
-	for _, i := range items {
-		h.Delete(i.index)
-	}
-
-	if g := h.Len(); g != 0 {
-		t.Errorf("want zero len, got %d", g)
-	}
 }
 
 func TestItemAdjust(t *testing.T) {
@@ -207,10 +198,6 @@ func TestClear(t *testing.T) {
 			t.Errorf("after Clear, item.index = %d, want -1", item.index)
 		}
 	}
-
-	// Operations on items from cleared heap should be safe (index is -1).
-	h.Delete(items[0].index)
-	h.Changed(items[1].index)
 }
 
 func TestAll(t *testing.T) {
@@ -283,6 +270,62 @@ func TestPanicOnEmptyExtractMin(t *testing.T) {
 	}()
 
 	h.TakeMin()
+}
+
+func panics(f func()) (b bool) {
+	defer func() {
+		if recover() != nil {
+			b = true
+		}
+	}()
+	f()
+	return false
+}
+
+func TestPanics(t *testing.T) {
+	h := New(cmp.Compare[int])
+	h.InsertSlice([]int{1, 2, 3})
+
+	t.Run("Delete(-1)", func(t *testing.T) {
+		if !panics(func() { h.Delete(-1) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Delete(10)", func(t *testing.T) {
+		if !panics(func() { h.Delete(10) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Delete(1) without index function", func(t *testing.T) {
+		if !panics(func() { h.Delete(1) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Delete(0)", func(t *testing.T) {
+		if panics(func() { h.Delete(0) }) {
+			t.Error("should not panic")
+		}
+	})
+	t.Run("Changed(-1)", func(t *testing.T) {
+		if !panics(func() { h.Changed(-1) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Changed(10)", func(t *testing.T) {
+		if !panics(func() { h.Changed(10) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Changed(1) without index function", func(t *testing.T) {
+		if !panics(func() { h.Changed(1) }) {
+			t.Error("should panic")
+		}
+	})
+	t.Run("Changed(0)", func(t *testing.T) {
+		if panics(func() { h.Changed(0) }) {
+			t.Error("should not panic")
+		}
+	})
 }
 
 func TestHeapWithStrings(t *testing.T) {

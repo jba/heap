@@ -126,10 +126,10 @@ func ExampleHeap_All() {
 	// Total elements 4, sum 16
 }
 
-// ExampleHeap_ChangeMin demonstrates finding the K largest elements
+// ExampleHeap_topK demonstrates finding the K largest elements
 // using a min-heap and ChangeMin.
-// This is commonly known as the "top K" algorithm.
-func ExampleHeap_topK() {
+// This is the "top K" algorithm.
+func Example_topK() {
 	// To find the K largest elements, use a min-heap of size K.
 	// The heap's min is the smallest of the K largest seen so far.
 	h := heap.New(cmp.Compare[int])
@@ -158,4 +158,20 @@ func ExampleHeap_topK() {
 	// 8
 	// 9
 	// 10
+}
+
+func Example_heapsort() {
+	// To implement heapsort, first build a heap, then drain it.
+	h := heap.New(cmp.Compare[int])
+	h.InsertSlice([]int{7, 2, 9, 1, 5})
+	for v := range h.Drain() {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 1
+	// 2
+	// 5
+	// 7
+	// 9
 }
