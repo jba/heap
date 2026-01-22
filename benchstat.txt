@@ -1,0 +1,17 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jba/heap
+cpu: AMD EPYC 7B12
+                │ /tmp/main-pq.txt │     /tmp/heap-comp-pq.txt     │
+                │      sec/op      │   sec/op     vs base          │
+PriorityQueue-8        64.70µ ± 2%   65.00µ ± 2%  ~ (p=0.123 n=10)
+
+                │ /tmp/main-pq.txt │      /tmp/heap-comp-pq.txt       │
+                │       B/op       │     B/op      vs base            │
+PriorityQueue-8       5.977Ki ± 0%   5.977Ki ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
+
+                │ /tmp/main-pq.txt │     /tmp/heap-comp-pq.txt      │
+                │    allocs/op     │ allocs/op   vs base            │
+PriorityQueue-8         110.0 ± 0%   110.0 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
