@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+type benchTask struct {
+	priority int
+	index    int
+}
+
 func BenchmarkHeapsort(b *testing.B) {
 	b.Run("int", func(b *testing.B) {
 		nums := make([]int, 1000)
@@ -37,4 +42,71 @@ func BenchmarkHeapsort(b *testing.B) {
 			}
 		}
 	})
+}
+
+func BenchmarkPriorityQueue(b *testing.B) {
+	cmpTask := func(a, b *benchTask) int { return cmp.Compare(a.priority, b.priority) }
+
+	// Pre-generate all random numbers for deterministic iterations
+	const nTasks = 100
+	const nRounds = 50
+
+	initialPriorities := make([]int, nTasks)
+	for i := range initialPriorities {
+		initialPriorities[i] = rand.Intn(1000)
+	}
+
+	// For each round: 3 task indices and 3 new priorities for Changed
+	changeTaskIdx := make([]int, nRounds*3)
+	changePriority := make([]int, nRounds*3)
+	for i := range changeTaskIdx {
+		changeTaskIdx[i] = rand.Intn(nTasks)
+		changePriority[i] = rand.Intn(1000)
+	}
+
+	for b.Loop() {
+		h := New(cmpTask)
+		h.SetIndexFunc(func(t *benchTask, i int) { t.index = i })
+
+		// Pool of tasks we can add/remove/modify
+		tasks := make([]*benchTask, nTasks)
+		for i := range tasks {
+			tasks[i] = &benchTask{priority: initialPriorities[i]}
+		}
+
+		// Simulate priority queue workload
+		for round := range nRounds {
+			// Add some tasks
+			for i := range 10 {
+				h.Insert(tasks[(round*10+i)%len(tasks)])
+			}
+
+			// Process highest priority tasks
+			for range 5 {
+				if h.Len() > 0 {
+					h.TakeMin()
+				}
+			}
+
+			// Change priority of some tasks still in heap
+			for j := range 3 {
+				idx := changeTaskIdx[round*3+j]
+				t := tasks[idx]
+				if t.index >= 0 && t.index < h.Len() {
+					t.priority = changePriority[round*3+j]
+					h.Changed(t.index)
+				}
+			}
+
+			// Delete a random task from heap
+			if h.Len() > 1 {
+				h.Delete(1)
+			}
+		}
+
+		// Drain remaining
+		for h.Len() > 0 {
+			h.TakeMin()
+		}
+	}
 }
