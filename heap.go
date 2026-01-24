@@ -3,16 +3,18 @@ package heap
 
 import "iter"
 
-// Heap is a binary min-heap.
+// A Heap is a binary min-heap.
 type Heap[T any] struct {
 	values   []T
 	setIndex func(T, int)
 	compare  func(T, T) int
 }
 
-// New creates a new min-heap with a comparison function.
-// The comparison function should return a negative value if a < b,
-// zero if a == b, and a positive value if a > b.
+// New creates a new [Heap] with the given comparison function.
+// The comparison function should return:
+//   - a negative value if a < b
+//   - zero if a == b
+//   - a positive value if a > b.
 func New[T any](compare func(T, T) int) *Heap[T] {
 	return &Heap[T]{compare: compare}
 }
@@ -121,7 +123,7 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 
 // Delete removes the element at index i from the heap.
 // The only reasonable values for i are 0, for the minimum element,
-// or an index maintained by an index function (see [Heap.SetIndexFunction]).
+// or an index maintained by an index function (see [Heap.SetIndexFunc]).
 // If i is out of range, or it is non-zero and there is no index function,
 // Delete panics.
 func (h *Heap[T]) Delete(i int) {
@@ -150,12 +152,11 @@ func (h *Heap[T]) delete(i int) {
 	}
 }
 
-// Changed restores the heap invariant after the element at index i has been modified.
-// The only reasonable values for i are 0, for the minimum element
-// (but see [Heap.ChangeMin] for an alternative)
-// or an index maintained by an index function (see [Heap.SetIndexFunction]).
-// If i is out of range, or it is non-zero and there is no index function,
-// Changed panics.
+// Changed restores the heap property after the element at index i has
+// been modified. The only reasonable values for i are 0, for the minimum
+// element (but see [Heap.ChangeMin] for an alternative) or an index maintained
+// by an index function (see [Heap.SetIndexFunc]). If i is out of range,
+// or it is non-zero and there is no index function, Changed panics.
 func (h *Heap[T]) Changed(i int) {
 	if i < 0 || i >= len(h.values) {
 		panic("heap: Changed: index out of range")
@@ -178,30 +179,21 @@ func (h *Heap[T]) ChangeMin(v T) {
 	h.down(0)
 }
 
-// up moves the element at index i up the heap until the heap invariant is restored.
-func (h *Heap[T]) up(i int) {
-	for i > 0 {
-		p := (i - 1) / 2 // parent
-		if h.compare(h.values[i], h.values[p]) >= 0 {
-			break
+// up moves the element at index i up the heap until the heap property
+// is restored. func (h *Heap[T]) up(i int) {
+// 	for i > 0 {
+// 		p := (i - 1) / 2 // ], h.values[p]) >= 0 {
+// 			break
 		}
 		h.swap(p, i)
 		i = p
 	}
 }
 
-// down moves the element at index i down the heap until the heap invariant is restored.
-// Returns true if the element moved.
-func (h *Heap[T]) down(i int) bool {
-	n := len(h.values)
-	i0 := i
-	for {
-		lc := 2*i + 1
-		if lc >= n {
-			break
-		}
-		child := lc // left child
-		if rc := lc + 1; rc < n && h.compare(h.values[rc], h.values[lc]) < 0 {
+// down moves the element at index i down the heap until the heap property
+// is restored. Returns true if the element moved. func (h *Heap[T]) down(i
+// int) bool {
+// 	n := le], h.values[lc]) < 0 {
 			child = rc // right child is smaller
 		}
 		if h.compare(h.values[child], h.values[i]) >= 0 {
