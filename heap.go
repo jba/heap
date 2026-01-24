@@ -181,10 +181,12 @@ func (h *Heap[T]) ChangeMin(v T) {
 }
 
 // up moves the element at index i up the heap until the heap property
-// is restored. func (h *Heap[T]) up(i int) {
-// 	for i > 0 {
-// 		p := (i - 1) / 2 // ], h.values[p]) >= 0 {
-// 			break
+// is restored.
+func (h *Heap[T]) up(i int) {
+	for i > 0 {
+		p := (i - 1) / 2 // parent
+		if h.compare(h.values[i], h.values[p]) >= 0 {
+			break
 		}
 		h.swap(p, i)
 		i = p
@@ -192,9 +194,17 @@ func (h *Heap[T]) ChangeMin(v T) {
 }
 
 // down moves the element at index i down the heap until the heap property
-// is restored. Returns true if the element moved. func (h *Heap[T]) down(i
-// int) bool {
-// 	n := le], h.values[lc]) < 0 {
+// is restored. It returns true if the element moved.
+func (h *Heap[T]) down(i int) bool {
+	n := len(h.values)
+	i0 := i
+	for {
+		lc := 2*i + 1
+		if lc >= n {
+			break
+		}
+		child := lc // left child
+		if rc := lc + 1; rc < n && h.compare(h.values[rc], h.values[lc]) < 0 {
 			child = rc // right child is smaller
 		}
 		if h.compare(h.values[child], h.values[i]) >= 0 {
