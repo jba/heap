@@ -122,7 +122,8 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 }
 
 // Delete removes the element at index i from the heap.
-// The only reasonable values for i are 0, for the minimum element,
+// The only reasonable values for i are 0, for the minimum element (but
+// see [Heap.TakeMin]),
 // or an index maintained by an index function (see [Heap.SetIndexFunc]).
 // If i is out of range, or it is non-zero and there is no index function,
 // Delete panics.
