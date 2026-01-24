@@ -2,7 +2,7 @@ package heap
 
 import (
 	"cmp"
-	"math/rand"
+	"math/rand/v2"
 	"slices"
 	"testing"
 )
@@ -53,15 +53,15 @@ func BenchmarkPriorityQueue(b *testing.B) {
 
 	initialPriorities := make([]int, nTasks)
 	for i := range initialPriorities {
-		initialPriorities[i] = rand.Intn(1000)
+		initialPriorities[i] = rand.IntN(1000)
 	}
 
 	// For each round: 3 task indices and 3 new priorities for Changed
 	changeTaskIdx := make([]int, nRounds*3)
 	changePriority := make([]int, nRounds*3)
 	for i := range changeTaskIdx {
-		changeTaskIdx[i] = rand.Intn(nTasks)
-		changePriority[i] = rand.Intn(1000)
+		changeTaskIdx[i] = rand.IntN(nTasks)
+		changePriority[i] = rand.IntN(1000)
 	}
 
 	for b.Loop() {
@@ -107,6 +107,31 @@ func BenchmarkPriorityQueue(b *testing.B) {
 		// Drain remaining
 		for h.Len() > 0 {
 			h.TakeMin()
+		}
+	}
+}
+
+func BenchmarkTopK(b *testing.B) {
+	// Seed RNG for deterministic data across runs
+	rng := rand.New(rand.NewPCG(12345, 67890))
+	data := make([]int, 10000)
+	for i := range data {
+		data[i] = rng.Int()
+	}
+
+	const k = 5
+
+	for b.Loop() {
+		h := New[int](cmp.Compare[int])
+
+		// Insert first k elements
+		h.InsertSlice(data[:k])
+
+		// For remaining elements, replace min if we find a larger value
+		for _, v := range data[k:] {
+			if v > h.Min() {
+				h.ChangeMin(v)
+			}
 		}
 	}
 }
