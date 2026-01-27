@@ -152,4 +152,20 @@ func BenchmarkTopK(b *testing.B) {
 			}
 		}
 	})
+
+	b.Run("Ordered", func(b *testing.B) {
+		for b.Loop() {
+			h := newOrderedHeap[int]()
+
+			// Insert first k elements
+			h.InsertSlice(data[:k])
+
+			// For remaining elements, replace min if we find a larger value
+			for _, v := range data[k:] {
+				if v > h.Min() {
+					h.ChangeMin(v)
+				}
+			}
+		}
+	})
 }
