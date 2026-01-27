@@ -121,17 +121,35 @@ func BenchmarkTopK(b *testing.B) {
 
 	const k = 5
 
-	for b.Loop() {
-		h := New[int](cmp.Compare[int])
+	b.Run("Heap", func(b *testing.B) {
+		for b.Loop() {
+			h := New[int](cmp.Compare[int])
 
-		// Insert first k elements
-		h.InsertSlice(data[:k])
+			// Insert first k elements
+			h.InsertSlice(data[:k])
 
-		// For remaining elements, replace min if we find a larger value
-		for _, v := range data[k:] {
-			if v > h.Min() {
-				h.ChangeMin(v)
+			// For remaining elements, replace min if we find a larger value
+			for _, v := range data[k:] {
+				if v > h.Min() {
+					h.ChangeMin(v)
+				}
 			}
 		}
-	}
+	})
+
+	b.Run("Grafana", func(b *testing.B) {
+		for b.Loop() {
+			// Copy first k elements and heapify
+			h := make([]int, k)
+			copy(h, data[:k])
+			grafanaHeapify(h)
+
+			// For remaining elements, replace min if we find a larger value
+			for _, v := range data[k:] {
+				if v > grafanaMin(h) {
+					grafanaChangeMin(h, v)
+				}
+			}
+		}
+	})
 }
