@@ -112,11 +112,9 @@ func BenchmarkPriorityQueue(b *testing.B) {
 }
 
 func BenchmarkTopK(b *testing.B) {
-	// Seed RNG for deterministic data across runs
-	rng := rand.New(rand.NewPCG(12345, 67890))
 	data := make([]int, 10000)
 	for i := range data {
-		data[i] = rng.Int()
+		data[i] = rand.Int()
 	}
 
 	const k = 5
