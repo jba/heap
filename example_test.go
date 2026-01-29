@@ -50,10 +50,9 @@ func Example_delete() {
 		index int
 	}
 
-	h := heap.New(func(a, b *intWithIndex) int {
+	h := heap.NewIndexed(func(a, b *intWithIndex) int {
 		return a.value - b.value
-	})
-	h.SetIndexFunc(func(v *intWithIndex, i int) { v.index = i })
+	}, func(v *intWithIndex, i int) { v.index = i })
 
 	item1 := &intWithIndex{value: 5}
 	item2 := &intWithIndex{value: 3}
@@ -82,10 +81,9 @@ func Example_changed() {
 		index int
 	}
 
-	h := heap.New(func(a, b *intWithIndex) int {
+	h := heap.NewIndexed(func(a, b *intWithIndex) int {
 		return a.value - b.value
-	})
-	h.SetIndexFunc(func(v *intWithIndex, i int) { v.index = i })
+	}, func(v *intWithIndex, i int) { v.index = i })
 
 	item1 := &intWithIndex{value: 5}
 	item2 := &intWithIndex{value: 3}

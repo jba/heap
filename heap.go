@@ -6,8 +6,8 @@ import "iter"
 // A Heap is a binary min-heap.
 type Heap[T any] struct {
 	values   []T
-	setIndex func(T, int)
 	compare  func(T, T) int
+	setIndex func(T, int)
 }
 
 // New creates a new [Heap] with the given comparison function.
@@ -19,12 +19,15 @@ func New[T any](compare func(T, T) int) *Heap[T] {
 	return &Heap[T]{compare: compare}
 }
 
-// SetIndexFunc sets a function that sets the index of a heap element.
-// It should be called before any other function on the heap.
-// A Heap with an index function supports the Delete and Changed methods.
-// In a Heap with an index function, all the elements must be distinct.
-func (h *Heap[T]) SetIndexFunc(f func(T, int)) {
-	h.setIndex = f
+// NewIndexed creates a new [Heap] with the given comparison function and
+// index function. The index function is called with an element and its
+// current index in the heap whenever the element's position changes, or
+// with -1 when the element is removed.
+//
+// A Heap created with NewIndexed supports the [Heap.Delete] and [Heap.Changed]
+// methods. All elements in such a Heap must be distinct.
+func NewIndexed[T any](compare func(T, T) int, setIndex func(T, int)) *Heap[T] {
+	return &Heap[T]{compare: compare, setIndex: setIndex}
 }
 
 // Insert adds an element to the heap.
@@ -124,7 +127,7 @@ func (h *Heap[T]) Drain() iter.Seq[T] {
 // Delete removes the element at index i from the heap.
 // The only reasonable values for i are 0, for the minimum element (but
 // see [Heap.TakeMin]),
-// or an index maintained by an index function (see [Heap.SetIndexFunc]).
+// or an index maintained by an index function (see [NewIndexed]).
 // If i is out of range, or it is non-zero and there is no index function,
 // Delete panics.
 func (h *Heap[T]) Delete(i int) {
@@ -156,7 +159,7 @@ func (h *Heap[T]) delete(i int) {
 // Changed restores the heap property after the element at index i has
 // been modified. The only reasonable values for i are 0, for the minimum
 // element (but see [Heap.ChangeMin] for an alternative) or an index maintained
-// by an index function (see [Heap.SetIndexFunc]). If i is out of range,
+// by an index function (see [NewIndexed]). If i is out of range,
 // or it is non-zero and there is no index function, Changed panics.
 func (h *Heap[T]) Changed(i int) {
 	if i < 0 || i >= len(h.values) {

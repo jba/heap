@@ -103,10 +103,9 @@ type intIndexed struct {
 }
 
 func TestItemDelete(t *testing.T) {
-	h := New(func(a, b *intIndexed) int {
+	h := NewIndexed(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
-	})
-	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+	}, func(v *intIndexed, i int) { v.index = i })
 	items := []*intIndexed{
 		{value: 1},
 		{value: 3},
@@ -138,10 +137,9 @@ func TestItemDelete(t *testing.T) {
 }
 
 func TestItemAdjust(t *testing.T) {
-	h := New(func(a, b *intIndexed) int {
+	h := NewIndexed(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
-	})
-	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+	}, func(v *intIndexed, i int) { v.index = i })
 
 	items := []*intIndexed{
 		{value: 5},
@@ -171,10 +169,9 @@ func TestItemAdjust(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	h := New(func(a, b *intIndexed) int {
+	h := NewIndexed(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
-	})
-	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+	}, func(v *intIndexed, i int) { v.index = i })
 
 	items := []*intIndexed{
 		{value: 5},
@@ -367,10 +364,9 @@ func TestLargeHeap(t *testing.T) {
 }
 
 func TestIndexFuncNoAllocs(t *testing.T) {
-	h := New(func(a, b *intIndexed) int {
+	h := NewIndexed(func(a, b *intIndexed) int {
 		return cmp.Compare(a.value, b.value)
-	})
-	h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+	}, func(v *intIndexed, i int) { v.index = i })
 
 	items := make([]*intIndexed, 100)
 	for i := range items {
@@ -460,10 +456,9 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("HeapFunc with indexFunc", func(t *testing.T) {
-		h := New(func(a, b *intIndexed) int {
+		h := NewIndexed(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
-		})
-		h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+		}, func(v *intIndexed, i int) { v.index = i })
 
 		items := []*intIndexed{
 			{value: 7},
@@ -495,10 +490,9 @@ func TestInsertSlice(t *testing.T) {
 	})
 
 	t.Run("HeapFunc with indexFunc appends to existing", func(t *testing.T) {
-		h := New(func(a, b *intIndexed) int {
+		h := NewIndexed(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
-		})
-		h.SetIndexFunc(func(v *intIndexed, i int) { v.index = i })
+		}, func(v *intIndexed, i int) { v.index = i })
 
 		// Insert initial items.
 		initial := []*intIndexed{{value: 10}, {value: 20}}

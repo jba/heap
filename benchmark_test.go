@@ -65,8 +65,7 @@ func BenchmarkPriorityQueue(b *testing.B) {
 	}
 
 	for b.Loop() {
-		h := New(cmpTask)
-		h.SetIndexFunc(func(t *benchTask, i int) { t.index = i })
+		h := NewIndexed(cmpTask, func(t *benchTask, i int) { t.index = i })
 
 		// Pool of tasks we can add/remove/modify
 		tasks := make([]*benchTask, nTasks)

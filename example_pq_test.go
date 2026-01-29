@@ -25,10 +25,9 @@ type Item struct {
 func Example_priorityQueue() {
 	// Create a priority queue with highest priority first.
 	// Since Heap is a min-heap, we reverse the comparison.
-	pq := heap.New(func(a, b *Item) int {
+	pq := heap.NewIndexed(func(a, b *Item) int {
 		return cmp.Compare(b.priority, a.priority)
-	})
-	pq.SetIndexFunc(func(item *Item, i int) { item.index = i })
+	}, func(item *Item, i int) { item.index = i })
 
 	// Some items and their priorities.
 	items := map[string]int{
