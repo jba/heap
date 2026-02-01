@@ -1,7 +1,10 @@
 // Package heap provides a min-heap data structure.
 package heap
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 // A Heap is a binary min-heap.
 type Heap[T any] struct {
@@ -24,10 +27,28 @@ func New[T any](compare func(T, T) int) *Heap[T] {
 // current index in the heap whenever the element's position changes, or
 // with -1 when the element is removed.
 //
+// For the index function to work, all elements in the heap must be distinct.
+//
 // A Heap created with NewIndexed supports the [Heap.Delete] and [Heap.Changed]
-// methods. All elements in such a Heap must be distinct.
+// methods.
 func NewIndexed[T any](compare func(T, T) int, setIndex func(T, int)) *Heap[T] {
 	return &Heap[T]{compare: compare, setIndex: setIndex}
+}
+
+// Init creates a heap from the slice.
+// The heap owns the slice: the caller must not use it subsequently.
+// Init panics if the heap is not empty.
+func (h *Heap[T]) Init(s []T) {
+	if len(h.values) != 0 {
+		panic("heap: Init: heap is not empty")
+	}
+	h.values = s
+	if h.setIndex != nil {
+		for i, e := range s {
+			h.setIndex(e, i)
+		}
+	}
+	h.heapify()
 }
 
 // Insert adds an element to the heap.
@@ -39,21 +60,22 @@ func (h *Heap[T]) Insert(value T) {
 	h.up(len(h.values) - 1)
 }
 
-// InsertSlice adds all elements of s to the heap, then heapifies.
-// The caller must not subsequently modify s.
-func (h *Heap[T]) InsertSlice(s []T) {
+// InsertAll adds all elements of the sequence to the heap,
+// re-establishing the heap property at the end.
+// It is more efficient to call InsertAll on a long sequence than
+// it is to call [Heap.Insert] on each element of the sequence.
+func (h *Heap[T]) InsertAll(seq iter.Seq[T]) {
 	start := len(h.values)
-	if start == 0 {
-		h.values = s
-	} else {
-		h.values = append(h.values, s...)
-	}
+	h.values = slices.AppendSeq(h.values, seq)
 	if h.setIndex != nil {
-		for i, v := range s {
-			h.setIndex(v, start+i)
+		for i, e := range h.values[start:] {
+			h.setIndex(e, start+i)
 		}
 	}
-	// heapify
+	h.heapify()
+}
+
+func (h *Heap[T]) heapify() {
 	for i := len(h.values)/2 - 1; i >= 0; i-- {
 		h.down(i)
 	}

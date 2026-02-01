@@ -3,6 +3,7 @@ package heap_test
 import (
 	"cmp"
 	"fmt"
+	"slices"
 
 	"github.com/jba/heap"
 )
@@ -11,7 +12,7 @@ func ExampleHeap() {
 	h := heap.New[int](cmp.Compare[int])
 
 	// Insert elements.
-	h.InsertSlice([]int{5, 3, 7, 1})
+	h.Init([]int{5, 3, 7, 1})
 
 	// Extract elements in sorted order.
 	fmt.Println(h.TakeMin())
@@ -33,7 +34,7 @@ func Example_maxHeap() {
 		return b - a
 	})
 
-	h.InsertSlice([]int{5, 3, 7, 1})
+	h.Init([]int{5, 3, 7, 1})
 
 	// Extract maximum values.
 	fmt.Println(h.TakeMin()) // "Min" extracts the element that compares smallest
@@ -59,7 +60,7 @@ func Example_delete() {
 	item3 := &intWithIndex{value: 7}
 	item4 := &intWithIndex{value: 1}
 
-	h.InsertSlice([]*intWithIndex{item1, item2, item3, item4})
+	h.Init([]*intWithIndex{item1, item2, item3, item4})
 
 	// Delete specific items by their index.
 	h.Delete(item1.index)
@@ -89,7 +90,7 @@ func Example_changed() {
 	item2 := &intWithIndex{value: 3}
 	item3 := &intWithIndex{value: 7}
 
-	h.InsertSlice([]*intWithIndex{item1, item2, item3})
+	h.Init([]*intWithIndex{item1, item2, item3})
 
 	// Get the current min.
 	fmt.Println(h.Min().value)
@@ -110,7 +111,7 @@ func Example_changed() {
 
 func ExampleHeap_All() {
 	h := heap.New(cmp.Compare[int])
-	h.InsertSlice([]int{5, 3, 7, 1})
+	h.Init([]int{5, 3, 7, 1})
 
 	// Iterate over all elements.
 	sum := 0
@@ -130,23 +131,24 @@ func ExampleHeap_All() {
 func Example_topK() {
 	// To find the K largest elements, use a min-heap of size K.
 	// The heap's min is the smallest of the K largest seen so far.
-	h := heap.New(cmp.Compare[int])
-
+	const K = 3
 	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
-	k := 3
 
-	// Insert first K elements.
-	h.InsertSlice(data[:k])
+	h := heap.New(cmp.Compare[int])
+	// Initialize the heap with the first K elements.
+	// The heap will own data[:K], but we don't need to refer to that
+	// part of the slice any more.
+	h.Init(data[:K])
 
 	// For remaining elements, replace the min if we find a larger value.
-	for _, v := range data[k:] {
+	for _, v := range data[K:] {
 		if v > h.Min() {
 			h.ChangeMin(v)
 		}
 	}
 
 	// Drain the heap to get the K largest (in ascending order).
-	fmt.Println("3 largest elements:")
+	fmt.Printf("%d largest elements:\n", K)
 	for v := range h.Drain() {
 		fmt.Println(v)
 	}
@@ -158,10 +160,32 @@ func Example_topK() {
 	// 10
 }
 
+func ExampleHeap_InsertAll() {
+	h := heap.New(cmp.Compare[int])
+	h.Init([]int{5, 3, 1})
+
+	// Add more elements to the existing heap.
+	h.InsertAll(slices.Values([]int{4, 2, 5, 6, 0}))
+
+	for v := range h.Drain() {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 0
+	// 1
+	// 2
+	// 3
+	// 4
+	// 5
+	// 5
+	// 6
+}
+
 func Example_heapsort() {
 	// To implement heapsort, first build a heap, then drain it.
 	h := heap.New(cmp.Compare[int])
-	h.InsertSlice([]int{7, 2, 9, 1, 5})
+	h.Init([]int{7, 2, 9, 1, 5})
 	for v := range h.Drain() {
 		fmt.Println(v)
 	}

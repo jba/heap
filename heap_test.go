@@ -59,7 +59,7 @@ func TestHeapBasicOperations(t *testing.T) {
 
 func TestHeapBuild(t *testing.T) {
 	h := New(cmp.Compare[int])
-	h.InsertSlice([]int{5, 2, 8, 1, 9, 3, 7})
+	h.Init([]int{5, 2, 8, 1, 9, 3, 7})
 
 	// Extract all elements - should come out in sorted order
 	extracted := slices.Collect(h.Drain())
@@ -80,7 +80,7 @@ func TestHeapFunc(t *testing.T) {
 		}
 		return 0
 	})
-	h.InsertSlice([]int{5, 3, 7, 1})
+	h.Init([]int{5, 3, 7, 1})
 
 	// Should extract in descending order
 	if max := h.TakeMin(); max != 7 {
@@ -112,7 +112,7 @@ func TestItemDelete(t *testing.T) {
 		{value: 7},
 		{value: 5},
 	}
-	h.InsertSlice(slices.Clone(items))
+	h.Init(slices.Clone(items))
 
 	if h.Len() != 4 {
 		t.Fatalf("heap should have 4 elements, got %d", h.Len())
@@ -148,9 +148,9 @@ func TestItemAdjust(t *testing.T) {
 		{value: 1},
 		{value: 9},
 	}
-	// Save reference before InsertSlice reorders the slice.
+	// Save reference before Init reorders the slice.
 	itemToModify := items[3]
-	h.InsertSlice(items)
+	h.Init(items)
 
 	// Modify the item (originally value 1) to 8.
 	itemToModify.value = 8
@@ -199,7 +199,7 @@ func TestClear(t *testing.T) {
 
 func TestAll(t *testing.T) {
 	h := New(cmp.Compare[int])
-	h.InsertSlice([]int{5, 2, 8, 1, 9})
+	h.Init([]int{5, 2, 8, 1, 9})
 
 	// Collect all elements
 	var collected []int
@@ -281,7 +281,7 @@ func panics(f func()) (b bool) {
 
 func TestPanics(t *testing.T) {
 	h := New(cmp.Compare[int])
-	h.InsertSlice([]int{1, 2, 3})
+	h.Init([]int{1, 2, 3})
 
 	t.Run("Delete(-1)", func(t *testing.T) {
 		if !panics(func() { h.Delete(-1) }) {
@@ -327,7 +327,7 @@ func TestPanics(t *testing.T) {
 
 func TestHeapWithStrings(t *testing.T) {
 	h := New(cmp.Compare[string])
-	h.InsertSlice([]string{"dog", "cat", "bird", "ant"})
+	h.Init([]string{"dog", "cat", "bird", "ant"})
 
 	if min := h.Min(); min != "ant" {
 		t.Errorf("Min() = %q, want %q", min, "ant")
@@ -372,7 +372,7 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 	for i := range items {
 		items[i] = &intIndexed{value: i}
 	}
-	h.InsertSlice(items)
+	h.Init(items)
 
 	// Verify Delete requires no allocation.
 	allocs := testing.AllocsPerRun(5, func() {
@@ -397,11 +397,11 @@ func TestIndexFuncNoAllocs(t *testing.T) {
 	}
 }
 
-func TestInsertSlice(t *testing.T) {
-	t.Run("Heap", func(t *testing.T) {
+func TestInit(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
 		h := New(cmp.Compare[int])
 		data := []int{7, 2, 9, 1, 5}
-		h.InsertSlice(data)
+		h.Init(data)
 
 		got := slices.Collect(h.Drain())
 		want := []int{1, 2, 5, 7, 9}
@@ -410,10 +410,10 @@ func TestInsertSlice(t *testing.T) {
 		}
 	})
 
-	t.Run("Heap takes ownership", func(t *testing.T) {
+	t.Run("takes ownership", func(t *testing.T) {
 		h := New(cmp.Compare[int])
 		data := []int{7, 2, 9, 1, 5}
-		h.InsertSlice(data)
+		h.Init(data)
 
 		// Modifying original slice should affect heap (ownership taken).
 		data[0] = 100
@@ -429,33 +429,15 @@ func TestInsertSlice(t *testing.T) {
 		}
 	})
 
-	t.Run("Heap appends to existing", func(t *testing.T) {
+	t.Run("panics if not empty", func(t *testing.T) {
 		h := New(cmp.Compare[int])
-		h.Insert(10)
-		h.Insert(20)
-
-		h.InsertSlice([]int{5, 15, 25})
-
-		got := slices.Collect(h.Drain())
-		want := []int{5, 10, 15, 20, 25}
-		if !slices.Equal(got, want) {
-			t.Errorf("got %v, want %v", got, want)
+		h.Insert(1)
+		if !panics(func() { h.Init([]int{2, 3}) }) {
+			t.Error("Init on non-empty heap should panic")
 		}
 	})
 
-	t.Run("HeapFunc without indexFunc", func(t *testing.T) {
-		h := New(func(a, b int) int { return cmp.Compare(a, b) })
-		data := []int{7, 2, 9, 1, 5}
-		h.InsertSlice(data)
-
-		got := slices.Collect(h.Drain())
-		want := []int{1, 2, 5, 7, 9}
-		if !slices.Equal(got, want) {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	})
-
-	t.Run("HeapFunc with indexFunc", func(t *testing.T) {
+	t.Run("with indexFunc", func(t *testing.T) {
 		h := NewIndexed(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		}, func(v *intIndexed, i int) { v.index = i })
@@ -467,7 +449,7 @@ func TestInsertSlice(t *testing.T) {
 			{value: 1},
 			{value: 5},
 		}
-		h.InsertSlice(items)
+		h.Init(items)
 
 		// Verify indexes are set correctly.
 		for _, item := range items {
@@ -488,8 +470,35 @@ func TestInsertSlice(t *testing.T) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
+}
 
-	t.Run("HeapFunc with indexFunc appends to existing", func(t *testing.T) {
+func TestInsertAll(t *testing.T) {
+	t.Run("into empty heap", func(t *testing.T) {
+		h := New(func(a, b int) int { return cmp.Compare(a, b) })
+		h.InsertAll(slices.Values([]int{7, 2, 9, 1, 5}))
+
+		got := slices.Collect(h.Drain())
+		want := []int{1, 2, 5, 7, 9}
+		if !slices.Equal(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("appends to existing", func(t *testing.T) {
+		h := New(cmp.Compare[int])
+		h.Insert(10)
+		h.Insert(20)
+
+		h.InsertAll(slices.Values([]int{5, 15, 25}))
+
+		got := slices.Collect(h.Drain())
+		want := []int{5, 10, 15, 20, 25}
+		if !slices.Equal(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("with indexFunc appends to existing", func(t *testing.T) {
 		h := NewIndexed(func(a, b *intIndexed) int {
 			return cmp.Compare(a.value, b.value)
 		}, func(v *intIndexed, i int) { v.index = i })
@@ -500,9 +509,9 @@ func TestInsertSlice(t *testing.T) {
 			h.Insert(item)
 		}
 
-		// InsertSlice more items.
+		// InsertAll more items.
 		more := []*intIndexed{{value: 5}, {value: 15}, {value: 25}}
-		h.InsertSlice(more)
+		h.InsertAll(slices.Values(more))
 
 		// Verify all indexes are valid.
 		all := append(initial, more...)

@@ -40,10 +40,10 @@ func main() {
 				data[i] = rand.Int()
 			}
 
-			// Time the InsertSlice operation (which includes heapify)
+			// Time the Init operation (which includes heapify)
 			h := heap.New(cmp.Compare[int])
 			start := time.Now()
-			h.InsertSlice(data)
+			h.Init(data)
 			elapsed := time.Since(start)
 			totalTime += elapsed
 		}
@@ -64,7 +64,7 @@ func main() {
 set terminal png size 1200,800 font "Arial,12"
 set output "build_times.png"
 
-set title "Heap InsertSlice Time vs Number of Elements" font "Arial,16"
+set title "Heap Init Time vs Number of Elements" font "Arial,16"
 set xlabel "Number of Elements (n)" font "Arial,14"
 set ylabel "Time (nanoseconds)" font "Arial,14"
 
@@ -75,7 +75,7 @@ set grid
 set key top left
 
 # Plot with points and lines
-plot "build_times.dat" using 1:2 with linespoints pointtype 7 pointsize 1.5 linewidth 2 title "InsertSlice time", \
+plot "build_times.dat" using 1:2 with linespoints pointtype 7 pointsize 1.5 linewidth 2 title "Init time", \
      "" using 1:($1*10) with lines linewidth 1 dashtype 2 title "O(n) reference"
 `
 	if err := os.WriteFile("plot.gp", []byte(gnuplotScript), 0644); err != nil {

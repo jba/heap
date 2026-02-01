@@ -21,7 +21,7 @@ func BenchmarkHeapsort(b *testing.B) {
 		b.ResetTimer()
 		for b.Loop() {
 			h := New(cmp.Compare[int])
-			h.InsertSlice(slices.Clone(nums))
+			h.Init(slices.Clone(nums))
 			for h.Len() > 0 {
 				h.TakeMin()
 			}
@@ -36,7 +36,7 @@ func BenchmarkHeapsort(b *testing.B) {
 		b.ResetTimer()
 		for b.Loop() {
 			h := New(func(a, b *intIndexed) int { return cmp.Compare(a.value, b.value) })
-			h.InsertSlice(slices.Clone(nums))
+			h.Init(slices.Clone(nums))
 			for h.Len() > 0 {
 				h.TakeMin()
 			}
@@ -123,7 +123,7 @@ func BenchmarkTopK(b *testing.B) {
 			h := New[int](cmp.Compare[int])
 
 			// Insert first k elements
-			h.InsertSlice(data[:k])
+			h.Init(slices.Clone(data[:k]))
 
 			// For remaining elements, replace min if we find a larger value
 			for _, v := range data[k:] {
