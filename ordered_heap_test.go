@@ -3,7 +3,11 @@
 
 package heap
 
-import "cmp"
+import (
+	"cmp"
+	"slices"
+	"testing"
+)
 
 // orderedHeap is a min-heap for ordered types.
 type orderedHeap[T cmp.Ordered] struct {
@@ -21,19 +25,39 @@ func (h *orderedHeap[T]) Insert(value T) {
 	h.up(len(h.values) - 1)
 }
 
-// InsertSlice adds all elements of s to the heap, then heapifies.
-func (h *orderedHeap[T]) InsertSlice(s []T) {
-	if h.values == nil {
-		h.values = s
-	} else {
-		h.values = append(h.values, s...)
+func (h *orderedHeap[T]) Init(s []T) {
+	if len(h.values) != 0 {
+		panic("non-empty")
 	}
+	h.values = s
 	h.build()
 }
 
 // Min returns the minimum element in the heap without removing it.
 func (h *orderedHeap[T]) Min() T {
 	return h.values[0]
+}
+
+func (h *orderedHeap[T]) TakeMin() T {
+	if len(h.values) == 0 {
+		panic("heap: TakeMin called on empty heap")
+	}
+	min := h.values[0]
+	h.delete(0)
+	return min
+}
+
+func (h *orderedHeap[T]) delete(i int) {
+	n := len(h.values) - 1
+	if n != i {
+		h.values[i], h.values[n] = h.values[n], h.values[i]
+	}
+	var zero T
+	h.values[n] = zero // allow GC
+	h.values = h.values[:n]
+	if n != i && !h.down(i) {
+		h.up(i)
+	}
 }
 
 // ChangeMin replaces the minimum value in the heap with the given value.
@@ -67,9 +91,10 @@ func (h *orderedHeap[T]) up(i int) {
 }
 
 // down moves the element at index i down the heap until the heap invariant is restored.
-func (h *orderedHeap[T]) down(i int) {
+func (h *orderedHeap[T]) down(i int) bool {
 	data := h.values
 	n := len(data)
+	i0 := i
 	for {
 		lc := 2*i + 1
 		if lc >= n {
@@ -84,5 +109,45 @@ func (h *orderedHeap[T]) down(i int) {
 		}
 		data[i], data[child] = data[child], data[i]
 		i = child
+	}
+	return i > i0
+}
+
+func TestOrderedHeapSort(t *testing.T) {
+	h := newOrderedHeap[int]()
+	h.Init([]int{5, 2, 8, 1, 9, 3, 7, 2, 7})
+
+	var got []int
+	for h.Len() > 0 {
+		got = append(got, h.TakeMin())
+	}
+
+	want := []int{1, 2, 2, 3, 5, 7, 7, 8, 9}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestOrderedHeapTopK(t *testing.T) {
+	data := []int{7, 2, 9, 1, 5, 8, 3, 6, 4, 10}
+	const k = 3
+
+	h := newOrderedHeap[int]()
+	h.Init(slices.Clone(data[:k]))
+
+	for _, v := range data[k:] {
+		if v > h.Min() {
+			h.ChangeMin(v)
+		}
+	}
+
+	var got []int
+	for h.Len() > 0 {
+		got = append(got, h.TakeMin())
+	}
+
+	want := []int{8, 9, 10}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }

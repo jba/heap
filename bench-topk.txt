@@ -1,0 +1,36 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jba/heap
+cpu: AMD EPYC 7B12
+BenchmarkTopK/Heap-8         	   38479	     30068 ns/op
+BenchmarkTopK/Heap-8         	   44092	     27394 ns/op
+BenchmarkTopK/Heap-8         	   41430	     28559 ns/op
+BenchmarkTopK/Heap-8         	   44190	     27572 ns/op
+BenchmarkTopK/Heap-8         	   45048	     27782 ns/op
+BenchmarkTopK/Heap-8         	   41138	     28240 ns/op
+BenchmarkTopK/Heap-8         	   45093	     28479 ns/op
+BenchmarkTopK/Heap-8         	   44310	     27259 ns/op
+BenchmarkTopK/Heap-8         	   45264	     27203 ns/op
+BenchmarkTopK/Heap-8         	   37986	     28292 ns/op
+BenchmarkTopK/Ordered-8      	   43772	     26917 ns/op
+BenchmarkTopK/Ordered-8      	   47433	     26008 ns/op
+BenchmarkTopK/Ordered-8      	   46041	     25660 ns/op
+BenchmarkTopK/Ordered-8      	   47823	     25973 ns/op
+BenchmarkTopK/Ordered-8      	   46603	     26084 ns/op
+BenchmarkTopK/Ordered-8      	   48638	     24997 ns/op
+BenchmarkTopK/Ordered-8      	   46803	     25220 ns/op
+BenchmarkTopK/Ordered-8      	   46621	     25965 ns/op
+BenchmarkTopK/Ordered-8      	   48744	     25939 ns/op
+BenchmarkTopK/Ordered-8      	   40328	     26881 ns/op
+BenchmarkTopK/Grafana-8      	   49119	     24428 ns/op
+BenchmarkTopK/Grafana-8      	   46959	     26382 ns/op
+BenchmarkTopK/Grafana-8      	   46140	     25537 ns/op
+BenchmarkTopK/Grafana-8      	   46214	     26304 ns/op
+BenchmarkTopK/Grafana-8      	   42272	     25921 ns/op
+BenchmarkTopK/Grafana-8      	   47263	     25462 ns/op
+BenchmarkTopK/Grafana-8      	   50528	     24059 ns/op
+BenchmarkTopK/Grafana-8      	   50890	     24437 ns/op
+BenchmarkTopK/Grafana-8      	   36498	     28120 ns/op
+BenchmarkTopK/Grafana-8      	   46215	     25156 ns/op
+PASS
+ok  	github.com/jba/heap	35.813s

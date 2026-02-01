@@ -1,0 +1,17 @@
+goos: linux
+goarch: amd64
+pkg: github.com/jba/heap
+cpu: AMD EPYC 7B12
+           │     Int      │               Ordered               │                Struct                │
+           │    sec/op    │   sec/op     vs base                │    sec/op     vs base                │
+Heapsort-8   115.17µ ± 1%   61.23µ ± 1%  -46.84% (p=0.000 n=10)   131.39µ ± 2%  +14.09% (p=0.000 n=10)
+
+           │     Int      │               Ordered               │              Struct              │
+           │     B/op     │     B/op      vs base               │     B/op      vs base            │
+Heapsort-8   8.047Ki ± 0%   8.023Ki ± 0%  -0.29% (p=0.000 n=10)   8.047Ki ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
+
+           │    Int     │            Ordered             │             Struct             │
+           │ allocs/op  │ allocs/op   vs base            │ allocs/op   vs base            │
+Heapsort-8   2.000 ± 0%   2.000 ± 0%  ~ (p=1.000 n=10) ¹   2.000 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal

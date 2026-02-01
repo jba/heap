@@ -13,12 +13,11 @@ type benchTask struct {
 }
 
 func BenchmarkHeapsort(b *testing.B) {
-	b.Run("int", func(b *testing.B) {
-		nums := make([]int, 1000)
-		for i := range nums {
-			nums[i] = rand.Int()
-		}
-		b.ResetTimer()
+	nums := make([]int, 1000)
+	for i := range nums {
+		nums[i] = rand.Int()
+	}
+	b.Run("Int", func(b *testing.B) {
 		for b.Loop() {
 			h := New(cmp.Compare[int])
 			h.Init(slices.Clone(nums))
@@ -27,8 +26,17 @@ func BenchmarkHeapsort(b *testing.B) {
 			}
 		}
 	})
+	b.Run("Ordered", func(b *testing.B) {
+		for b.Loop() {
+			h := newOrderedHeap[int]()
+			h.Init(slices.Clone(nums))
+			for h.Len() > 0 {
+				h.TakeMin()
+			}
+		}
+	})
 
-	b.Run("struct", func(b *testing.B) {
+	b.Run("Struct", func(b *testing.B) {
 		nums := make([]*intIndexed, 1000)
 		for i := range nums {
 			nums[i] = &intIndexed{value: rand.Int()}
@@ -123,7 +131,7 @@ func BenchmarkTopK(b *testing.B) {
 			h := New[int](cmp.Compare[int])
 
 			// Insert first k elements
-			h.Init(slices.Clone(data[:k]))
+			h.Init(data[:k])
 
 			// For remaining elements, replace min if we find a larger value
 			for _, v := range data[k:] {
@@ -134,6 +142,21 @@ func BenchmarkTopK(b *testing.B) {
 		}
 	})
 
+	b.Run("Ordered", func(b *testing.B) {
+		for b.Loop() {
+			h := newOrderedHeap[int]()
+
+			// Insert first k elements
+			h.Init(data[:k])
+
+			// For remaining elements, replace min if we find a larger value
+			for _, v := range data[k:] {
+				if v > h.Min() {
+					h.ChangeMin(v)
+				}
+			}
+		}
+	})
 	b.Run("Grafana", func(b *testing.B) {
 		for b.Loop() {
 			// Copy first k elements and heapify
@@ -145,22 +168,6 @@ func BenchmarkTopK(b *testing.B) {
 			for _, v := range data[k:] {
 				if v > grafanaMin(h) {
 					grafanaChangeMin(h, v)
-				}
-			}
-		}
-	})
-
-	b.Run("Ordered", func(b *testing.B) {
-		for b.Loop() {
-			h := newOrderedHeap[int]()
-
-			// Insert first k elements
-			h.InsertSlice(data[:k])
-
-			// For remaining elements, replace min if we find a larger value
-			for _, v := range data[k:] {
-				if v > h.Min() {
-					h.ChangeMin(v)
 				}
 			}
 		}
