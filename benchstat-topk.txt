@@ -2,15 +2,6 @@ goos: linux
 goarch: amd64
 pkg: github.com/jba/heap
 cpu: AMD EPYC 7B12
-       │    Heap     │               Grafana               │              Ordered               │
-       │   sec/op    │   sec/op     vs base                │   sec/op     vs base               │
-TopK-8   27.39µ ± 4%   22.24µ ± 2%  -18.81% (p=0.000 n=10)   25.13µ ± 3%  -8.27% (p=0.000 n=10)
-
-       │    Heap    │              Grafana               │              Ordered               │
-       │    B/op    │   B/op     vs base                 │    B/op     vs base                │
-TopK-8   48.00 ± 0%   0.00 ± 0%  -100.00% (p=0.000 n=10)   24.00 ± 0%  -50.00% (p=0.000 n=10)
-
-       │    Heap    │               Grafana               │            Ordered             │
-       │ allocs/op  │ allocs/op   vs base                 │ allocs/op   vs base            │
-TopK-8   1.000 ± 0%   0.000 ± 0%  -100.00% (p=0.000 n=10)   1.000 ± 0%  ~ (p=1.000 n=10) ¹
-¹ all samples are equal
+     │  */Heap-8   │            */Ordered-8             │            */Grafana-8             │
+     │   sec/op    │   sec/op     vs base               │   sec/op     vs base               │
+TopK   28.01µ ± 3%   25.97µ ± 4%  -7.29% (p=0.000 n=10)   25.50µ ± 4%  -8.97% (p=0.000 n=10)
