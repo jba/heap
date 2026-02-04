@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assembly Comparison: orderedHeap vs intHeap</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1, h2, h3 {
+            color: #569cd6;
+            margin-top: 30px;
+        }
+        h1 {
+            border-bottom: 2px solid #569cd6;
+            padding-bottom: 10px;
+        }
+        .intro {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .intro code {
+            background: #3c3c3c;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ce9178;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .panel {
+            background: #252526;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .panel-header {
+            background: #3c3c3c;
+            padding: 10px 15px;
+            font-weight: bold;
+            color: #4ec9b0;
+        }
+        .panel-header.generic {
+            background: #4a3c2c;
+            color: #dcdcaa;
+        }
+        .panel-header.concrete {
+            background: #2c4a3c;
+            color: #4ec9b0;
+        }
+        .source {
+            padding: 15px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #3c3c3c;
+        }
+        .source pre {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .assembly {
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+        .assembly pre {
+            margin: 0;
+        }
+        .asm-line {
+            display: flex;
+            padding: 2px 0;
+        }
+        .asm-line:hover {
+            background: #2a2d2e;
+        }
+        .asm-addr {
+            color: #608b4e;
+            width: 80px;
+            flex-shrink: 0;
+        }
+        .asm-bytes {
+            color: #6a9955;
+            width: 120px;
+            flex-shrink: 0;
+        }
+        .asm-instr {
+            color: #9cdcfe;
+            width: 200px;
+            flex-shrink: 0;
+        }
+        .asm-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+        .highlight-diff {
+            background: #3e2723;
+            border-left: 3px solid #f44336;
+            padding-left: 5px;
+            margin-left: -8px;
+        }
+        .highlight-same {
+            background: #1b3e1b;
+            border-left: 3px solid #4caf50;
+            padding-left: 5px;
+            margin-left: -8px;
+        }
+        .annotation {
+            background: #2d2d2d;
+            border-left: 4px solid #569cd6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .annotation h4 {
+            margin-top: 0;
+            color: #569cd6;
+        }
+        .annotation ul {
+            margin-bottom: 0;
+        }
+        .annotation li {
+            margin: 8px 0;
+        }
+        .key-diff {
+            background: #3e2723;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f44336;
+        }
+        .key-diff h4 {
+            margin-top: 0;
+            color: #f44336;
+        }
+        .instruction-count {
+            display: inline-block;
+            background: #569cd6;
+            color: #1e1e1e;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .summary-table th, .summary-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #3c3c3c;
+        }
+        .summary-table th {
+            background: #3c3c3c;
+            color: #569cd6;
+        }
+        .summary-table tr:nth-child(even) {
+            background: #2d2d2d;
+        }
+        .keyword {
+            color: #c586c0;
+        }
+        .type {
+            color: #4ec9b0;
+        }
+        .func {
+            color: #dcdcaa;
+        }
+        .string {
+            color: #ce9178;
+        }
+        .number {
+            color: #b5cea8;
+        }
+        .comment {
+            color: #6a9955;
+        }
+    </style>
+</head>
+<body>
+    <h1>Assembly Comparison: orderedHeap[T] vs intHeap</h1>
+
+    <div class="intro">
+        <p>This page compares the generated x86-64 assembly for two heap implementations:</p>
+        <ul>
+            <li><code>orderedHeap[T cmp.Ordered]</code> - Generic heap using <code>cmp.Compare</code></li>
+            <li><code>intHeap</code> - Non-generic heap using <code>cmp.Compare</code> with concrete <code>int</code> type</li>
+        </ul>
+        <p>Both use <code>cmp.Compare</code> for comparisons. The key difference is that the generic version must handle
+        all <code>cmp.Ordered</code> types including floating-point types with potential NaN values.</p>
+    </div>
+
+    <h2>The <code>up()</code> Method</h2>
+
+    <div class="comparison">
+        <div class="panel">
+            <div class="panel-header generic">orderedHeap[T cmp.Ordered].up() <span class="instruction-count">~35 instructions</span></div>
+            <div class="source">
+<pre><span class="keyword">func</span> (h *<span class="type">orderedHeap</span>[<span class="type">T</span>]) <span class="func">up</span>(i <span class="type">int</span>) {
+    <span class="keyword">for</span> i > <span class="number">0</span> {
+        p := (i - <span class="number">1</span>) / <span class="number">2</span>
+        <span class="keyword">if</span> cmp.<span class="func">Compare</span>(h.values[i], h.values[p]) >= <span class="number">0</span> {
+            <span class="keyword">break</span>
+        }
+        h.values[p], h.values[i] = h.values[i], h.values[p]
+        i = p
+    }
+}</pre>
+            </div>
+            <div class="assembly">
+<pre>
+<div class="asm-line"><span class="asm-comment"># Function prologue</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271a0</span><span class="asm-bytes">55</span><span class="asm-instr">PUSHQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271a1</span><span class="asm-bytes">4889e5</span><span class="asm-instr">MOVQ SP, BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271a4</span><span class="asm-bytes">4883ec10</span><span class="asm-instr">SUBQ $0x10, SP</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Jump to loop test</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271a8</span><span class="asm-bytes">eb0b</span><span class="asm-instr">JMP loop_test</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Swap values[p] and values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271aa</span><span class="asm-bytes">4c8904d7</span><span class="asm-instr">MOVQ R8, 0(DI)(DX*8)</span><span class="asm-comment"># values[p] = old values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ae</span><span class="asm-bytes">488934cf</span><span class="asm-instr">MOVQ SI, 0(DI)(CX*8)</span><span class="asm-comment"># values[i] = old values[p]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i = p</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271b2</span><span class="asm-bytes">4889d1</span><span class="asm-instr">MOVQ DX, CX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Loop test: i > 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271b5</span><span class="asm-bytes">4885c9</span><span class="asm-instr">TESTQ CX, CX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271b8</span><span class="asm-bytes">7e55</span><span class="asm-instr">JLE epilogue</span></div>
+
+<div class="asm-line"><span class="asm-comment"># p = (i - 1) / 2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ba</span><span class="asm-bytes">488d51ff</span><span class="asm-instr">LEAQ -0x1(CX), DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271be</span><span class="asm-bytes">48c1ea3f</span><span class="asm-instr">SHRQ $0x3f, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271c2</span><span class="asm-bytes">488b7008</span><span class="asm-instr">MOVQ 0x8(AX), SI</span><span class="asm-comment"># len(values)</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271c6</span><span class="asm-bytes">488d140a</span><span class="asm-instr">LEAQ 0(DX)(CX*1), DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ca</span><span class="asm-bytes">488d52ff</span><span class="asm-instr">LEAQ -0x1(DX), DX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Bounds check: i < len</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ce</span><span class="asm-bytes">4839f1</span><span class="asm-instr">CMPQ CX, SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271d1</span><span class="asm-bytes">7352</span><span class="asm-instr">JAE panic</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x5271d3</span><span class="asm-bytes">48d1fa</span><span class="asm-instr">SARQ $0x1, DX</span><span class="asm-comment"># p = result / 2</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271d6</span><span class="asm-bytes">488b38</span><span class="asm-instr">MOVQ 0(AX), DI</span><span class="asm-comment"># values.ptr</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271d9</span><span class="asm-bytes">4c8b04cf</span><span class="asm-instr">MOVQ 0(DI)(CX*8), R8</span><span class="asm-comment"># R8 = values[i]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Bounds check: p < len</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271dd</span><span class="asm-bytes">0f1f00</span><span class="asm-instr">NOPL 0(AX)</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271e0</span><span class="asm-bytes">4839d6</span><span class="asm-instr">CMPQ SI, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271e3</span><span class="asm-bytes">7630</span><span class="asm-instr">JBE panic</span></div>
+
+<div class="asm-line highlight-diff"><span class="asm-comment"># NaN check (generic only!) - isNaN(x)</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x5271e5</span><span class="asm-bytes">488b7330</span><span class="asm-instr">MOVQ 0x30(BX), SI</span><span class="asm-comment"># Load cmp itab</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x5271e9</span><span class="asm-bytes">8406</span><span class="asm-instr">TESTB AL, 0(SI)</span><span class="asm-comment"># Nil/type check</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load values[p]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271eb</span><span class="asm-bytes">488b34d7</span><span class="asm-instr">MOVQ 0(DI)(DX*8), SI</span><span class="asm-comment"># SI = values[p]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare 3-way comparison</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ef</span><span class="asm-bytes">4c39c6</span><span class="asm-instr">CMPQ SI, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271f2</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271f4</span><span class="asm-bytes">49c7c1ffffffff</span><span class="asm-instr">MOVQ $-0x1, R9</span><span class="asm-comment"># result = -1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271fb</span><span class="asm-bytes">eb0d</span><span class="asm-instr">JMP check</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271fd</span><span class="asm-bytes">7d08</span><span class="asm-instr">JGE equal</span></div>
+<div class="asm-line"><span class="asm-addr">0x5271ff</span><span class="asm-bytes">41b901000000</span><span class="asm-instr">MOVL $0x1, R9</span><span class="asm-comment"># result = +1</span></div>
+<div class="asm-line"><span class="asm-addr">0x527205</span><span class="asm-bytes">eb03</span><span class="asm-instr">JMP check</span></div>
+<div class="asm-line"><span class="asm-addr">0x527207</span><span class="asm-bytes">4531c9</span><span class="asm-instr">XORL R9, R9</span><span class="asm-comment"># result = 0</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Check result >= 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x52720a</span><span class="asm-bytes">4d85c9</span><span class="asm-instr">TESTQ R9, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x52720d</span><span class="asm-bytes">7c9b</span><span class="asm-instr">JL swap</span><span class="asm-comment"># if < 0, swap</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Epilogue</span></div>
+<div class="asm-line"><span class="asm-addr">0x52720f</span><span class="asm-bytes">4883c410</span><span class="asm-instr">ADDQ $0x10, SP</span></div>
+<div class="asm-line"><span class="asm-addr">0x527213</span><span class="asm-bytes">5d</span><span class="asm-instr">POPQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x527214</span><span class="asm-bytes">c3</span><span class="asm-instr">RET</span></div>
+</pre>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header concrete">intHeap.up() <span class="instruction-count">~33 instructions</span></div>
+            <div class="source">
+<pre><span class="keyword">func</span> (h *<span class="type">intHeap</span>) <span class="func">up</span>(i <span class="type">int</span>) {
+    <span class="keyword">for</span> i > <span class="number">0</span> {
+        p := (i - <span class="number">1</span>) / <span class="number">2</span>
+        <span class="keyword">if</span> cmp.<span class="func">Compare</span>(h.values[i], h.values[p]) >= <span class="number">0</span> {
+            <span class="keyword">break</span>
+        }
+        h.values[p], h.values[i] = h.values[i], h.values[p]
+        i = p
+    }
+}</pre>
+            </div>
+            <div class="assembly">
+<pre>
+<div class="asm-line"><span class="asm-comment"># Function prologue</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248e0</span><span class="asm-bytes">55</span><span class="asm-instr">PUSHQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248e1</span><span class="asm-bytes">4889e5</span><span class="asm-instr">MOVQ SP, BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248e4</span><span class="asm-bytes">4883ec10</span><span class="asm-instr">SUBQ $0x10, SP</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Jump to loop test</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248e8</span><span class="asm-bytes">eb0b</span><span class="asm-instr">JMP loop_test</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Swap values[p] and values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248ea</span><span class="asm-bytes">48893cd6</span><span class="asm-instr">MOVQ DI, 0(SI)(DX*8)</span><span class="asm-comment"># values[p] = old values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248ee</span><span class="asm-bytes">4c8904de</span><span class="asm-instr">MOVQ R8, 0(SI)(BX*8)</span><span class="asm-comment"># values[i] = old values[p]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i = p</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248f2</span><span class="asm-bytes">4889d3</span><span class="asm-instr">MOVQ DX, BX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Loop test: i > 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248f5</span><span class="asm-bytes">4885db</span><span class="asm-instr">TESTQ BX, BX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248f8</span><span class="asm-bytes">7e4f</span><span class="asm-instr">JLE epilogue</span></div>
+
+<div class="asm-line"><span class="asm-comment"># p = (i - 1) / 2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248fa</span><span class="asm-bytes">488d53ff</span><span class="asm-instr">LEAQ -0x1(BX), DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5248fe</span><span class="asm-bytes">48c1ea3f</span><span class="asm-instr">SHRQ $0x3f, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524902</span><span class="asm-bytes">488b4808</span><span class="asm-instr">MOVQ 0x8(AX), CX</span><span class="asm-comment"># len(values)</span></div>
+<div class="asm-line"><span class="asm-addr">0x524906</span><span class="asm-bytes">488d141a</span><span class="asm-instr">LEAQ 0(DX)(BX*1), DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x52490a</span><span class="asm-bytes">488d52ff</span><span class="asm-instr">LEAQ -0x1(DX), DX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Bounds check: i < len</span></div>
+<div class="asm-line"><span class="asm-addr">0x52490e</span><span class="asm-bytes">4839cb</span><span class="asm-instr">CMPQ BX, CX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524911</span><span class="asm-bytes">7344</span><span class="asm-instr">JAE panic</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x524913</span><span class="asm-bytes">48d1fa</span><span class="asm-instr">SARQ $0x1, DX</span><span class="asm-comment"># p = result / 2</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load values[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x524916</span><span class="asm-bytes">488b30</span><span class="asm-instr">MOVQ 0(AX), SI</span><span class="asm-comment"># values.ptr</span></div>
+<div class="asm-line"><span class="asm-addr">0x524919</span><span class="asm-bytes">488b3cde</span><span class="asm-instr">MOVQ 0(SI)(BX*8), DI</span><span class="asm-comment"># DI = values[i]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Bounds check: p < len</span></div>
+<div class="asm-line"><span class="asm-addr">0x52491d</span><span class="asm-bytes">0f1f00</span><span class="asm-instr">NOPL 0(AX)</span></div>
+<div class="asm-line"><span class="asm-addr">0x524920</span><span class="asm-bytes">4839d1</span><span class="asm-instr">CMPQ CX, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524923</span><span class="asm-bytes">762a</span><span class="asm-instr">JBE panic</span></div>
+
+<div class="asm-line highlight-same"><span class="asm-comment"># No NaN check needed for int!</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load values[p]</span></div>
+<div class="asm-line"><span class="asm-addr">0x524925</span><span class="asm-bytes">4c8b04d6</span><span class="asm-instr">MOVQ 0(SI)(DX*8), R8</span><span class="asm-comment"># R8 = values[p]</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare 3-way comparison</span></div>
+<div class="asm-line"><span class="asm-addr">0x524929</span><span class="asm-bytes">4939f8</span><span class="asm-instr">CMPQ R8, DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x52492c</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less</span></div>
+<div class="asm-line"><span class="asm-addr">0x52492e</span><span class="asm-bytes">48c7c1ffffffff</span><span class="asm-instr">MOVQ $-0x1, CX</span><span class="asm-comment"># result = -1</span></div>
+<div class="asm-line"><span class="asm-addr">0x524935</span><span class="asm-bytes">eb0d</span><span class="asm-instr">JMP check</span></div>
+<div class="asm-line"><span class="asm-addr">0x524937</span><span class="asm-bytes">7d09</span><span class="asm-instr">JGE equal</span></div>
+<div class="asm-line"><span class="asm-addr">0x524939</span><span class="asm-bytes">b901000000</span><span class="asm-instr">MOVL $0x1, CX</span><span class="asm-comment"># result = +1</span></div>
+<div class="asm-line"><span class="asm-addr">0x52493e</span><span class="asm-bytes">6690</span><span class="asm-instr">NOPW</span></div>
+<div class="asm-line"><span class="asm-addr">0x524940</span><span class="asm-bytes">eb02</span><span class="asm-instr">JMP check</span></div>
+<div class="asm-line"><span class="asm-addr">0x524942</span><span class="asm-bytes">31c9</span><span class="asm-instr">XORL CX, CX</span><span class="asm-comment"># result = 0</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Check result >= 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x524944</span><span class="asm-bytes">4885c9</span><span class="asm-instr">TESTQ CX, CX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524947</span><span class="asm-bytes">7ca1</span><span class="asm-instr">JL swap</span><span class="asm-comment"># if < 0, swap</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Epilogue</span></div>
+<div class="asm-line"><span class="asm-addr">0x524949</span><span class="asm-bytes">4883c410</span><span class="asm-instr">ADDQ $0x10, SP</span></div>
+<div class="asm-line"><span class="asm-addr">0x52494d</span><span class="asm-bytes">5d</span><span class="asm-instr">POPQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x52494e</span><span class="asm-bytes">c3</span><span class="asm-instr">RET</span></div>
+</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation">
+        <h4>Key Difference in up(): NaN Check</h4>
+        <p>The generic <code>orderedHeap[T]</code> includes two extra instructions for NaN handling:</p>
+        <ul>
+            <li><code>MOVQ 0x30(BX), SI</code> - Load the cmp interface table pointer</li>
+            <li><code>TESTB AL, 0(SI)</code> - Memory access that triggers the NaN check path</li>
+        </ul>
+        <p>The <code>cmp.Compare</code> function for <code>cmp.Ordered</code> types must handle floating-point NaN values correctly.
+        Since the generic version could be instantiated with <code>float32</code> or <code>float64</code>,
+        it includes this check. The concrete <code>intHeap</code> knows at compile time that <code>int</code>
+        cannot be NaN, so this check is elided.</p>
+    </div>
+
+    <h2>The <code>down()</code> Method</h2>
+
+    <div class="comparison">
+        <div class="panel">
+            <div class="panel-header generic">orderedHeap[T cmp.Ordered].down() <span class="instruction-count">~65 instructions</span></div>
+            <div class="source">
+<pre><span class="keyword">func</span> (h *<span class="type">orderedHeap</span>[<span class="type">T</span>]) <span class="func">down</span>(i <span class="type">int</span>) <span class="type">bool</span> {
+    data := h.values
+    n := <span class="func">len</span>(data)
+    i0 := i
+    <span class="keyword">for</span> {
+        lc := <span class="number">2</span>*i + <span class="number">1</span>
+        <span class="keyword">if</span> lc >= n { <span class="keyword">break</span> }
+        child := lc
+        <span class="keyword">if</span> rc := lc + <span class="number">1</span>; rc < n &&
+           cmp.<span class="func">Compare</span>(data[rc], data[lc]) < <span class="number">0</span> {
+            child = rc
+        }
+        <span class="keyword">if</span> cmp.<span class="func">Compare</span>(data[child], data[i]) >= <span class="number">0</span> {
+            <span class="keyword">break</span>
+        }
+        data[i], data[child] = data[child], data[i]
+        i = child
+    }
+    <span class="keyword">return</span> i > i0
+}</pre>
+            </div>
+            <div class="assembly">
+<pre>
+<div class="asm-line"><span class="asm-comment"># Function prologue</span></div>
+<div class="asm-line"><span class="asm-addr">0x527080</span><span class="asm-bytes">55</span><span class="asm-instr">PUSHQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x527081</span><span class="asm-bytes">4889e5</span><span class="asm-instr">MOVQ SP, BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x527084</span><span class="asm-bytes">4883ec10</span><span class="asm-instr">SUBQ $0x10, SP</span></div>
+
+<div class="asm-line"><span class="asm-comment"># data = h.values</span></div>
+<div class="asm-line"><span class="asm-addr">0x527088</span><span class="asm-bytes">488b5008</span><span class="asm-instr">MOVQ 0x8(AX), DX</span><span class="asm-comment"># n = len</span></div>
+<div class="asm-line"><span class="asm-addr">0x52708c</span><span class="asm-bytes">488b30</span><span class="asm-instr">MOVQ 0(AX), SI</span><span class="asm-comment"># data.ptr</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i0 = i (save for return)</span></div>
+<div class="asm-line"><span class="asm-addr">0x52708f</span><span class="asm-bytes">4889c8</span><span class="asm-instr">MOVQ CX, AX</span></div>
+<div class="asm-line"><span class="asm-addr">0x527092</span><span class="asm-bytes">eb0b</span><span class="asm-instr">JMP loop_start</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Swap data[i] and data[child]</span></div>
+<div class="asm-line"><span class="asm-addr">0x527094</span><span class="asm-bytes">48893cce</span><span class="asm-instr">MOVQ DI, 0(SI)(CX*8)</span></div>
+<div class="asm-line"><span class="asm-addr">0x527098</span><span class="asm-bytes">4e890cc6</span><span class="asm-instr">MOVQ R9, 0(SI)(R8*8)</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i = child</span></div>
+<div class="asm-line"><span class="asm-addr">0x52709c</span><span class="asm-bytes">4c89c1</span><span class="asm-instr">MOVQ R8, CX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># lc = 2*i + 1</span></div>
+<div class="asm-line"><span class="asm-addr">0x52709f</span><span class="asm-bytes">488d3c09</span><span class="asm-instr">LEAQ 0(CX)(CX*1), DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270a3</span><span class="asm-bytes">488d7f01</span><span class="asm-instr">LEAQ 0x1(DI), DI</span></div>
+
+<div class="asm-line"><span class="asm-comment"># if lc >= n { break }</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270a7</span><span class="asm-bytes">4839fa</span><span class="asm-instr">CMPQ DX, DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270aa</span><span class="asm-bytes">0f8e99000000</span><span class="asm-instr">JLE done</span></div>
+
+<div class="asm-line"><span class="asm-comment"># rc = lc + 1; if rc < n</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270b0</span><span class="asm-bytes">4c8d0409</span><span class="asm-instr">LEAQ 0(CX)(CX*1), R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270b4</span><span class="asm-bytes">4d8d4002</span><span class="asm-instr">LEAQ 0x2(R8), R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270b8</span><span class="asm-bytes">4c39c2</span><span class="asm-instr">CMPQ DX, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270bb</span><span class="asm-bytes">7e48</span><span class="asm-instr">JLE use_left</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load data[rc] and data[lc]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270c0</span><span class="asm-bytes">0f86b5000000</span><span class="asm-instr">JBE panic</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270c6</span><span class="asm-bytes">4e8b0cc6</span><span class="asm-instr">MOVQ 0(SI)(R8*8), R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270ca</span><span class="asm-bytes">4839fa</span><span class="asm-instr">CMPQ DX, DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270cd</span><span class="asm-bytes">0f869d000000</span><span class="asm-instr">JBE panic</span></div>
+
+<div class="asm-line highlight-diff"><span class="asm-comment"># NaN check for first cmp.Compare</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x5270d3</span><span class="asm-bytes">4c8b5338</span><span class="asm-instr">MOVQ 0x38(BX), R10</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x5270d7</span><span class="asm-bytes">418402</span><span class="asm-instr">TESTB AL, 0(R10)</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x5270da</span><span class="asm-bytes">4c8b14fe</span><span class="asm-instr">MOVQ 0(SI)(DI*8), R10</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare(data[rc], data[lc]) < 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270e0</span><span class="asm-bytes">4d39ca</span><span class="asm-instr">CMPQ R10, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270e3</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270e5</span><span class="asm-bytes">49c7c1ffffffff</span><span class="asm-instr">MOVQ $-0x1, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270ec</span><span class="asm-bytes">eb12</span><span class="asm-instr">JMP check1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270ee</span><span class="asm-bytes">7d08</span><span class="asm-instr">JGE equal1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270f0</span><span class="asm-bytes">41b901000000</span><span class="asm-instr">MOVL $0x1, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270f6</span><span class="asm-bytes">eb08</span><span class="asm-instr">JMP check1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5270f8</span><span class="asm-bytes">4531c9</span><span class="asm-instr">XORL R9, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x527100</span><span class="asm-bytes">4d85c9</span><span class="asm-instr">TESTQ R9, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x527103</span><span class="asm-bytes">7c03</span><span class="asm-instr">JL use_right</span></div>
+
+<div class="asm-line"><span class="asm-comment"># child = lc or rc</span></div>
+<div class="asm-line"><span class="asm-addr">0x527105</span><span class="asm-bytes">4989f8</span><span class="asm-instr">MOVQ DI, R8</span><span class="asm-comment"># use left child</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load data[child] and data[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x527108</span><span class="asm-bytes">4939d0</span><span class="asm-instr">CMPQ R8, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x52710b</span><span class="asm-bytes">7358</span><span class="asm-instr">JAE panic</span></div>
+<div class="asm-line"><span class="asm-addr">0x52710d</span><span class="asm-bytes">4a8b3cc6</span><span class="asm-instr">MOVQ 0(SI)(R8*8), DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x527111</span><span class="asm-bytes">4839d1</span><span class="asm-instr">CMPQ CX, DX</span></div>
+<div class="asm-line"><span class="asm-addr">0x527114</span><span class="asm-bytes">733f</span><span class="asm-instr">JAE panic</span></div>
+
+<div class="asm-line highlight-diff"><span class="asm-comment"># NaN check for second cmp.Compare</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x527116</span><span class="asm-bytes">4c8b4b38</span><span class="asm-instr">MOVQ 0x38(BX), R9</span></div>
+<div class="asm-line highlight-diff"><span class="asm-addr">0x52711a</span><span class="asm-bytes">418401</span><span class="asm-instr">TESTB AL, 0(R9)</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x52711d</span><span class="asm-bytes">4c8b0cce</span><span class="asm-instr">MOVQ 0(SI)(CX*8), R9</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare(data[child], data[i]) >= 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x527121</span><span class="asm-bytes">4939f9</span><span class="asm-instr">CMPQ R9, DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x527124</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less2</span></div>
+<div class="asm-line"><span class="asm-addr">0x527126</span><span class="asm-bytes">49c7c2ffffffff</span><span class="asm-instr">MOVQ $-0x1, R10</span></div>
+<div class="asm-line"><span class="asm-addr">0x52712d</span><span class="asm-bytes">eb11</span><span class="asm-instr">JMP check2</span></div>
+<div class="asm-line"><span class="asm-addr">0x52712f</span><span class="asm-bytes">7d08</span><span class="asm-instr">JGE equal2</span></div>
+<div class="asm-line"><span class="asm-addr">0x527131</span><span class="asm-bytes">41ba01000000</span><span class="asm-instr">MOVL $0x1, R10</span></div>
+<div class="asm-line"><span class="asm-addr">0x527137</span><span class="asm-bytes">eb07</span><span class="asm-instr">JMP check2</span></div>
+<div class="asm-line"><span class="asm-addr">0x527139</span><span class="asm-bytes">4531d2</span><span class="asm-instr">XORL R10, R10</span></div>
+<div class="asm-line"><span class="asm-addr">0x527140</span><span class="asm-bytes">4d85d2</span><span class="asm-instr">TESTQ R10, R10</span></div>
+<div class="asm-line"><span class="asm-comment"># ... continues with swap or break</span></div>
+</pre>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header concrete">intHeap.down() <span class="instruction-count">~57 instructions</span></div>
+            <div class="source">
+<pre><span class="keyword">func</span> (h *<span class="type">intHeap</span>) <span class="func">down</span>(i <span class="type">int</span>) <span class="type">bool</span> {
+    data := h.values
+    n := <span class="func">len</span>(data)
+    i0 := i
+    <span class="keyword">for</span> {
+        lc := <span class="number">2</span>*i + <span class="number">1</span>
+        <span class="keyword">if</span> lc >= n { <span class="keyword">break</span> }
+        child := lc
+        <span class="keyword">if</span> rc := lc + <span class="number">1</span>; rc < n &&
+           cmp.<span class="func">Compare</span>(data[rc], data[lc]) < <span class="number">0</span> {
+            child = rc
+        }
+        <span class="keyword">if</span> cmp.<span class="func">Compare</span>(data[child], data[i]) >= <span class="number">0</span> {
+            <span class="keyword">break</span>
+        }
+        data[i], data[child] = data[child], data[i]
+        i = child
+    }
+    <span class="keyword">return</span> i > i0
+}</pre>
+            </div>
+            <div class="assembly">
+<pre>
+<div class="asm-line"><span class="asm-comment"># Function prologue</span></div>
+<div class="asm-line"><span class="asm-addr">0x524960</span><span class="asm-bytes">55</span><span class="asm-instr">PUSHQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x524961</span><span class="asm-bytes">4889e5</span><span class="asm-instr">MOVQ SP, BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x524964</span><span class="asm-bytes">4883ec10</span><span class="asm-instr">SUBQ $0x10, SP</span></div>
+
+<div class="asm-line"><span class="asm-comment"># data = h.values</span></div>
+<div class="asm-line"><span class="asm-addr">0x524968</span><span class="asm-bytes">488b4808</span><span class="asm-instr">MOVQ 0x8(AX), CX</span><span class="asm-comment"># n = len</span></div>
+<div class="asm-line"><span class="asm-addr">0x52496c</span><span class="asm-bytes">488b10</span><span class="asm-instr">MOVQ 0(AX), DX</span><span class="asm-comment"># data.ptr</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i0 = i (save for return)</span></div>
+<div class="asm-line"><span class="asm-addr">0x52496f</span><span class="asm-bytes">4889d8</span><span class="asm-instr">MOVQ BX, AX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524972</span><span class="asm-bytes">eb0b</span><span class="asm-instr">JMP loop_start</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Swap data[i] and data[child]</span></div>
+<div class="asm-line"><span class="asm-addr">0x524974</span><span class="asm-bytes">488934da</span><span class="asm-instr">MOVQ SI, 0(DX)(BX*8)</span></div>
+<div class="asm-line"><span class="asm-addr">0x524978</span><span class="asm-bytes">4c8904fa</span><span class="asm-instr">MOVQ R8, 0(DX)(DI*8)</span></div>
+
+<div class="asm-line"><span class="asm-comment"># i = child</span></div>
+<div class="asm-line"><span class="asm-addr">0x52497c</span><span class="asm-bytes">4889fb</span><span class="asm-instr">MOVQ DI, BX</span></div>
+
+<div class="asm-line"><span class="asm-comment"># lc = 2*i + 1</span></div>
+<div class="asm-line"><span class="asm-addr">0x52497f</span><span class="asm-bytes">488d341b</span><span class="asm-instr">LEAQ 0(BX)(BX*1), SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x524983</span><span class="asm-bytes">488d7601</span><span class="asm-instr">LEAQ 0x1(SI), SI</span></div>
+
+<div class="asm-line"><span class="asm-comment"># if lc >= n { break }</span></div>
+<div class="asm-line"><span class="asm-addr">0x524987</span><span class="asm-bytes">4839f1</span><span class="asm-instr">CMPQ CX, SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x52498a</span><span class="asm-bytes">7e7d</span><span class="asm-instr">JLE done</span></div>
+
+<div class="asm-line"><span class="asm-comment"># rc = lc + 1; if rc < n</span></div>
+<div class="asm-line"><span class="asm-addr">0x52498c</span><span class="asm-bytes">488d3c1b</span><span class="asm-instr">LEAQ 0(BX)(BX*1), DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x524990</span><span class="asm-bytes">488d7f02</span><span class="asm-instr">LEAQ 0x2(DI), DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x524994</span><span class="asm-bytes">4839f9</span><span class="asm-instr">CMPQ CX, DI</span></div>
+<div class="asm-line"><span class="asm-addr">0x524997</span><span class="asm-bytes">7e33</span><span class="asm-instr">JLE use_left</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load data[rc] and data[lc]</span></div>
+<div class="asm-line"><span class="asm-addr">0x524999</span><span class="asm-bytes">0f868e000000</span><span class="asm-instr">JBE panic</span></div>
+<div class="asm-line"><span class="asm-addr">0x52499f</span><span class="asm-bytes">4c8b04fa</span><span class="asm-instr">MOVQ 0(DX)(DI*8), R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249a3</span><span class="asm-bytes">4839f1</span><span class="asm-instr">CMPQ CX, SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249a6</span><span class="asm-bytes">767d</span><span class="asm-instr">JBE panic</span></div>
+
+<div class="asm-line highlight-same"><span class="asm-comment"># No NaN check - int cannot be NaN</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x5249a8</span><span class="asm-bytes">4c8b0cf2</span><span class="asm-instr">MOVQ 0(DX)(SI*8), R9</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare(data[rc], data[lc]) < 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249ac</span><span class="asm-bytes">4d39c1</span><span class="asm-instr">CMPQ R9, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249af</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249b1</span><span class="asm-bytes">49c7c0ffffffff</span><span class="asm-instr">MOVQ $-0x1, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249b8</span><span class="asm-bytes">eb0d</span><span class="asm-instr">JMP check1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249ba</span><span class="asm-bytes">7d08</span><span class="asm-instr">JGE equal1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249bc</span><span class="asm-bytes">41b801000000</span><span class="asm-instr">MOVL $0x1, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249c2</span><span class="asm-bytes">eb03</span><span class="asm-instr">JMP check1</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249c4</span><span class="asm-bytes">4531c0</span><span class="asm-instr">XORL R8, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249c7</span><span class="asm-bytes">4d85c0</span><span class="asm-instr">TESTQ R8, R8</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249ca</span><span class="asm-bytes">7c03</span><span class="asm-instr">JL use_right</span></div>
+
+<div class="asm-line"><span class="asm-comment"># child = lc or rc</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249cc</span><span class="asm-bytes">4889f7</span><span class="asm-instr">MOVQ SI, DI</span><span class="asm-comment"># use left child</span></div>
+
+<div class="asm-line"><span class="asm-comment"># Load data[child] and data[i]</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249cf</span><span class="asm-bytes">4839cf</span><span class="asm-instr">CMPQ DI, CX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249d2</span><span class="asm-bytes">7349</span><span class="asm-instr">JAE panic</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249d4</span><span class="asm-bytes">488b34fa</span><span class="asm-instr">MOVQ 0(DX)(DI*8), SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249d8</span><span class="asm-bytes">4839cb</span><span class="asm-instr">CMPQ BX, CX</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249db</span><span class="asm-bytes">7338</span><span class="asm-instr">JAE panic</span></div>
+
+<div class="asm-line highlight-same"><span class="asm-comment"># No NaN check - int cannot be NaN</span></div>
+
+<div class="asm-line"><span class="asm-addr">0x5249dd</span><span class="asm-bytes">4c8b04da</span><span class="asm-instr">MOVQ 0(DX)(BX*8), R8</span></div>
+
+<div class="asm-line"><span class="asm-comment"># cmp.Compare(data[child], data[i]) >= 0</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249e1</span><span class="asm-bytes">4939f0</span><span class="asm-instr">CMPQ R8, SI</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249e4</span><span class="asm-bytes">7e09</span><span class="asm-instr">JLE not_less2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249e6</span><span class="asm-bytes">49c7c1ffffffff</span><span class="asm-instr">MOVQ $-0x1, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249ed</span><span class="asm-bytes">eb11</span><span class="asm-instr">JMP check2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249ef</span><span class="asm-bytes">7d08</span><span class="asm-instr">JGE equal2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249f1</span><span class="asm-bytes">41b901000000</span><span class="asm-instr">MOVL $0x1, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249f7</span><span class="asm-bytes">eb07</span><span class="asm-instr">JMP check2</span></div>
+<div class="asm-line"><span class="asm-addr">0x5249f9</span><span class="asm-bytes">4531c9</span><span class="asm-instr">XORL R9, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a00</span><span class="asm-bytes">4d85c9</span><span class="asm-instr">TESTQ R9, R9</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a03</span><span class="asm-bytes">0f8c6bffffff</span><span class="asm-instr">JL swap</span></div>
+
+<div class="asm-line"><span class="asm-comment"># return i > i0</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a09</span><span class="asm-bytes">4839d8</span><span class="asm-instr">CMPQ AX, BX</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a0c</span><span class="asm-bytes">0f9cc0</span><span class="asm-instr">SETL AL</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a0f</span><span class="asm-bytes">4883c410</span><span class="asm-instr">ADDQ $0x10, SP</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a13</span><span class="asm-bytes">5d</span><span class="asm-instr">POPQ BP</span></div>
+<div class="asm-line"><span class="asm-addr">0x524a14</span><span class="asm-bytes">c3</span><span class="asm-instr">RET</span></div>
+</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="key-diff">
+        <h4>Key Difference: NaN Handling in Generic Code</h4>
+        <p>The <code>down()</code> method has <strong>two</strong> <code>cmp.Compare</code> calls per iteration:</p>
+        <ol>
+            <li>Compare right child vs left child (to find smaller child)</li>
+            <li>Compare smaller child vs current element (to decide if swap needed)</li>
+        </ol>
+        <p>In <code>orderedHeap[T]</code>, each comparison includes a NaN check (2 instructions each = 4 extra instructions per iteration).
+        In <code>intHeap</code>, these checks are elided since <code>int</code> cannot be NaN.</p>
+    </div>
+
+    <h2>Summary</h2>
+
+    <table class="summary-table">
+        <tr>
+            <th>Aspect</th>
+            <th>orderedHeap[T cmp.Ordered]</th>
+            <th>intHeap</th>
+        </tr>
+        <tr>
+            <td>Type</td>
+            <td>Generic (monomorphized to go.shape.int)</td>
+            <td>Concrete (int)</td>
+        </tr>
+        <tr>
+            <td>Comparison</td>
+            <td>cmp.Compare (inlined, 3-way)</td>
+            <td>cmp.Compare (inlined, 3-way)</td>
+        </tr>
+        <tr>
+            <td>NaN checks in up()</td>
+            <td>1 check (2 instructions)</td>
+            <td>0 checks</td>
+        </tr>
+        <tr>
+            <td>NaN checks in down()</td>
+            <td>2 checks (4 instructions)</td>
+            <td>0 checks</td>
+        </tr>
+        <tr>
+            <td>up() instruction count</td>
+            <td>~35</td>
+            <td>~33</td>
+        </tr>
+        <tr>
+            <td>down() instruction count</td>
+            <td>~65</td>
+            <td>~57</td>
+        </tr>
+        <tr>
+            <td>Overhead per down() iteration</td>
+            <td>+4 instructions (NaN checks)</td>
+            <td>baseline</td>
+        </tr>
+    </table>
+
+    <div class="annotation">
+        <h4>Why the NaN Check?</h4>
+        <p>The <code>cmp.Compare</code> function from Go's standard library handles NaN values specially for floating-point types:</p>
+        <pre><code>func Compare[T Ordered](x, y T) int {
+    xNaN := isNaN(x)  // <-- This check!
+    yNaN := isNaN(y)
+    if xNaN {
+        if yNaN { return 0 }
+        return -1  // NaN sorts before other values
+    }
+    if yNaN { return +1 }
+    // Normal comparison
+    if x < y { return -1 }
+    if x > y { return +1 }
+    return 0
+}</code></pre>
+        <p>For generic <code>orderedHeap[T cmp.Ordered]</code>, the compiler cannot prove that T won't be
+        <code>float32</code> or <code>float64</code>, so it must include the NaN check. For concrete
+        <code>intHeap</code>, the compiler knows <code>int</code> cannot be NaN and elides the check entirely.</p>
+    </div>
+
+    <div class="annotation">
+        <h4>Implications for Performance</h4>
+        <ul>
+            <li>The extra NaN checks add ~4 instructions per <code>down()</code> iteration</li>
+            <li>For a heap with n elements, <code>down()</code> runs O(log n) iterations per operation</li>
+            <li>Heapsort on 1000 elements: ~10,000 <code>down()</code> iterations = ~40,000 extra instructions</li>
+            <li>The overhead is modest but measurable in tight loops</li>
+            <li>Both versions still use the 3-way <code>cmp.Compare</code> pattern (8 instructions) instead of
+                direct comparison (2 instructions: <code>CMP</code> + <code>Jcc</code>)</li>
+        </ul>
+    </div>
+
+    <h2>What Direct Comparison Would Look Like</h2>
+
+    <div class="annotation">
+        <h4>If intHeap used direct <code>&lt;</code> comparison instead of <code>cmp.Compare</code>:</h4>
+<pre><code>// Current (cmp.Compare):
+if cmp.Compare(h.values[i], h.values[p]) >= 0 { break }
+
+// Assembly: 8 instructions
+CMPQ R8, DI          // compare values
+JLE not_less
+MOVQ $-0x1, CX       // result = -1
+JMP check
+JGE equal
+MOVL $0x1, CX        // result = +1
+JMP check
+XORL CX, CX          // result = 0
+TESTQ CX, CX         // check result
+JL swap              // branch on result
+
+// Direct comparison:
+if h.values[i] >= h.values[p] { break }
+
+// Assembly: 2 instructions
+CMPQ DI, R8          // compare values
+JGE break            // branch directly
+</code></pre>
+        <p>Direct comparison would save <strong>6 instructions per comparison</strong>,
+        which is significant for heap operations that perform many comparisons.</p>
+    </div>
+
+</body>
+</html>
