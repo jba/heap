@@ -126,23 +126,7 @@ func BenchmarkTopK(b *testing.B) {
 
 	const k = 5
 
-	b.Run("Heap", func(b *testing.B) {
-		for b.Loop() {
-			h := New[int](cmp.Compare[int])
-
-			// Insert first k elements
-			h.Init(data[:k])
-
-			// For remaining elements, replace min if we find a larger value
-			for _, v := range data[k:] {
-				if v > h.Min() {
-					h.ChangeMin(v)
-				}
-			}
-		}
-	})
-
-	b.Run("Ordered", func(b *testing.B) {
+	b.Run("kind=Ordered", func(b *testing.B) {
 		for b.Loop() {
 			h := newOrderedHeap[int]()
 
@@ -157,7 +141,37 @@ func BenchmarkTopK(b *testing.B) {
 			}
 		}
 	})
-	b.Run("Grafana", func(b *testing.B) {
+	b.Run("kind=int", func(b *testing.B) {
+		for b.Loop() {
+			h := newIntHeap()
+
+			// Insert first k elements
+			h.Init(data[:k])
+
+			// For remaining elements, replace min if we find a larger value
+			for _, v := range data[k:] {
+				if v > h.Min() {
+					h.ChangeMin(v)
+				}
+			}
+		}
+	})
+	b.Run("kind=Grafana", func(b *testing.B) {
+		b.Run("kind=Heap", func(b *testing.B) {
+			for b.Loop() {
+				h := New[int](cmp.Compare[int])
+
+				// Insert first k elements
+				h.Init(data[:k])
+
+				// For remaining elements, replace min if we find a larger value
+				for _, v := range data[k:] {
+					if v > h.Min() {
+						h.ChangeMin(v)
+					}
+				}
+			}
+		})
 		for b.Loop() {
 			// Copy first k elements and heapify
 			h := make([]int, k)
